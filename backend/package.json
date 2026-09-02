@@ -1,0 +1,21 @@
+{
+  "name": "land-acquisition-backend",
+  "version": "1.0.0",
+  "description": "Express backend for Land Acquisition GIS system",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@turf/turf": "^7.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "osmtogeojson": "^3.0.0-beta.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

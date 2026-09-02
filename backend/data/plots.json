@@ -1,0 +1,369 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "P-101",
+      "properties": {
+        "plotId": "P-101",
+        "ownerName": "Debabrata Mukherjee",
+        "khasraNo": "452/A",
+        "landAreaSqM": 1250,
+        "landCategory": "Residential",
+        "ratePerSqM": 6500,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2018-8831"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3585, 22.5710],
+            [88.3615, 22.5712],
+            [88.3612, 22.5692],
+            [88.3582, 22.5690],
+            [88.3585, 22.5710]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-102",
+      "properties": {
+        "plotId": "P-102",
+        "ownerName": "Sunita Banerjee & Anr",
+        "khasraNo": "452/B",
+        "landAreaSqM": 1840,
+        "landCategory": "Commercial",
+        "ratePerSqM": 14500,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2015-4190"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3615, 22.5712],
+            [88.3645, 22.5714],
+            [88.3642, 22.5694],
+            [88.3612, 22.5692],
+            [88.3615, 22.5712]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-103",
+      "properties": {
+        "plotId": "P-103",
+        "ownerName": "Aloke Kumar Ghosh",
+        "khasraNo": "453/1",
+        "landAreaSqM": 2100,
+        "landCategory": "Commercial",
+        "ratePerSqM": 15200,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2020-9921"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3645, 22.5714],
+            [88.3675, 22.5716],
+            [88.3672, 22.5696],
+            [88.3642, 22.5694],
+            [88.3645, 22.5714]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-104",
+      "properties": {
+        "plotId": "P-104",
+        "ownerName": "Pradip Chattopadhyay",
+        "khasraNo": "453/2",
+        "landAreaSqM": 980,
+        "landCategory": "Residential",
+        "ratePerSqM": 7200,
+        "wardNo": "Ward 46",
+        "deedNo": "DEED-2017-3310"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3675, 22.5716],
+            [88.3705, 22.5718],
+            [88.3702, 22.5698],
+            [88.3672, 22.5696],
+            [88.3675, 22.5716]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-105",
+      "properties": {
+        "plotId": "P-105",
+        "ownerName": "KMDA Municipal Buffer Estate",
+        "khasraNo": "454/A",
+        "landAreaSqM": 3400,
+        "landCategory": "Agricultural",
+        "ratePerSqM": 4200,
+        "wardNo": "Ward 46",
+        "deedNo": "DEED-2011-1022"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3705, 22.5718],
+            [88.3740, 22.5720],
+            [88.3736, 22.5695],
+            [88.3702, 22.5698],
+            [88.3705, 22.5718]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-106",
+      "properties": {
+        "plotId": "P-106",
+        "ownerName": "Manas Roy Choudhury",
+        "khasraNo": "458/1",
+        "landAreaSqM": 1420,
+        "landCategory": "Residential",
+        "ratePerSqM": 6800,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2019-7612"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3582, 22.5690],
+            [88.3612, 22.5692],
+            [88.3609, 22.5670],
+            [88.3579, 22.5668],
+            [88.3582, 22.5690]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-107",
+      "properties": {
+        "plotId": "P-107",
+        "ownerName": "Swapan Halder & Sons",
+        "khasraNo": "458/2",
+        "landAreaSqM": 1650,
+        "landCategory": "Commercial",
+        "ratePerSqM": 13500,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2014-2201"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3612, 22.5692],
+            [88.3642, 22.5694],
+            [88.3639, 22.5672],
+            [88.3609, 22.5670],
+            [88.3612, 22.5692]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-108",
+      "properties": {
+        "plotId": "P-108",
+        "ownerName": "Anjali Sengupta",
+        "khasraNo": "459/C",
+        "landAreaSqM": 1100,
+        "landCategory": "Residential",
+        "ratePerSqM": 7000,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2021-0814"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3642, 22.5694],
+            [88.3672, 22.5696],
+            [88.3669, 22.5674],
+            [88.3639, 22.5672],
+            [88.3642, 22.5694]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-109",
+      "properties": {
+        "plotId": "P-109",
+        "ownerName": "Bishwanath Das",
+        "khasraNo": "460/3",
+        "landAreaSqM": 1950,
+        "landCategory": "Agricultural",
+        "ratePerSqM": 4800,
+        "wardNo": "Ward 46",
+        "deedNo": "DEED-2016-5541"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3672, 22.5696],
+            [88.3702, 22.5698],
+            [88.3698, 22.5675],
+            [88.3669, 22.5674],
+            [88.3672, 22.5696]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-110",
+      "properties": {
+        "plotId": "P-110",
+        "ownerName": "M/s Metro Warehousing Ltd",
+        "khasraNo": "461/A",
+        "landAreaSqM": 4200,
+        "landCategory": "Commercial",
+        "ratePerSqM": 16000,
+        "wardNo": "Ward 46",
+        "deedNo": "DEED-2018-9902"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3702, 22.5698],
+            [88.3736, 22.5695],
+            [88.3731, 22.5671],
+            [88.3698, 22.5675],
+            [88.3702, 22.5698]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-111",
+      "properties": {
+        "plotId": "P-111",
+        "ownerName": "Tapan Kumar Bhattacharya",
+        "khasraNo": "462/B",
+        "landAreaSqM": 850,
+        "landCategory": "Residential",
+        "ratePerSqM": 7500,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2022-1130"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3588, 22.5732],
+            [88.3618, 22.5734],
+            [88.3615, 22.5712],
+            [88.3585, 22.5710],
+            [88.3588, 22.5732]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-112",
+      "properties": {
+        "plotId": "P-112",
+        "ownerName": "Rupa Mallick",
+        "khasraNo": "463/1",
+        "landAreaSqM": 1300,
+        "landCategory": "Residential",
+        "ratePerSqM": 7800,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2020-4019"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3618, 22.5734],
+            [88.3648, 22.5736],
+            [88.3645, 22.5714],
+            [88.3615, 22.5712],
+            [88.3618, 22.5734]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-113",
+      "properties": {
+        "plotId": "P-113",
+        "ownerName": "Kolkata Logistics & Cold Storage",
+        "khasraNo": "464/2",
+        "landAreaSqM": 3100,
+        "landCategory": "Commercial",
+        "ratePerSqM": 14000,
+        "wardNo": "Ward 45",
+        "deedNo": "DEED-2016-7281"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3648, 22.5736],
+            [88.3678, 22.5738],
+            [88.3675, 22.5716],
+            [88.3645, 22.5714],
+            [88.3648, 22.5736]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "P-114",
+      "properties": {
+        "plotId": "P-114",
+        "ownerName": "Subhasish Dutta",
+        "khasraNo": "465/A",
+        "landAreaSqM": 1550,
+        "landCategory": "Agricultural",
+        "ratePerSqM": 4500,
+        "wardNo": "Ward 46",
+        "deedNo": "DEED-2017-8022"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.3678, 22.5738],
+            [88.3708, 22.5740],
+            [88.3705, 22.5718],
+            [88.3675, 22.5716],
+            [88.3678, 22.5738]
+          ]
+        ]
+      }
+    }
+  ]
+}
