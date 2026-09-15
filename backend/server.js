@@ -55,6 +55,47 @@ function hashString(str) {
   return Math.abs(hash);
 }
 
+// Reverse geocoding helper via OSM Nominatim with memory cache
+const reverseGeocodeCache = new Map();
+
+async function reverseGeocodeCoordinates(lat, lng) {
+  const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  if (reverseGeocodeCache.has(cacheKey)) {
+    return reverseGeocodeCache.get(cacheKey);
+  }
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'BhoomiAcquireGIS/1.0 (West Bengal Land Acquisition Engine)'
+      }
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const addr = data.address || {};
+    const parts = [];
+
+    if (data.name) parts.push(data.name);
+    if (addr.building) parts.push(addr.building);
+    if (addr.house_number) parts.push(`Premises ${addr.house_number}`);
+    if (addr.road || addr.pedestrian) parts.push(addr.road || addr.pedestrian);
+    if (addr.suburb || addr.neighbourhood || addr.residential) parts.push(addr.suburb || addr.neighbourhood || addr.residential);
+    if (addr.city || addr.town || addr.county || addr.state_district) parts.push(addr.city || addr.town || addr.county || addr.state_district);
+    if (addr.postcode) parts.push(addr.postcode);
+
+    const formatted = parts.length > 0 ? parts.join(', ') : data.display_name;
+    if (formatted) {
+      reverseGeocodeCache.set(cacheKey, formatted);
+      return formatted;
+    }
+  } catch (e) {
+    console.warn(`[Reverse Geocode] Failed for [${lat}, ${lng}]:`, e.message);
+  }
+  return null;
+}
+
 // 2. METADATA ENRICHMENT ON THE FLY
 function enrichOsmFeatures(features) {
   return features.map((feature, index) => {
@@ -93,7 +134,7 @@ function enrichOsmFeatures(features) {
       category = 'Agricultural';
     }
 
-    // Rate per sqM (West Bengal typical circle rate bands)
+    // Rate per sqM (West Bengal circle rate bands)
     let rate = 6500;
     if (category === 'Commercial') {
       rate = 12000 + (hash % 6000);
@@ -112,12 +153,44 @@ function enrichOsmFeatures(features) {
     }
     if (areaSqM <= 0) areaSqM = 650 + (hash % 1500);
 
+    const areaSqKm = Number((areaSqM / 1_000_000).toFixed(6));
+
+    // Calculate centroid coordinates for surveyor navigation
+    let centerLat = 22.5726;
+    let centerLng = 88.3639;
+    try {
+      const center = turf.centroid(feature);
+      centerLng = Number(center.geometry.coordinates[0].toFixed(6));
+      centerLat = Number(center.geometry.coordinates[1].toFixed(6));
+    } catch (e) { }
+
+    // Extract address from OSM tags or fallback to location coordinates string
+    const addressParts = [];
+    if (rawTags['addr:housenumber']) addressParts.push(`Premises ${rawTags['addr:housenumber']}`);
+    if (rawTags['addr:street']) addressParts.push(rawTags['addr:street']);
+    if (rawTags['addr:suburb']) addressParts.push(rawTags['addr:suburb']);
+    if (rawTags['addr:city']) addressParts.push(rawTags['addr:city']);
+    if (rawTags['addr:postcode']) addressParts.push(rawTags['addr:postcode']);
+
+    let address = rawTags['addr:full'] || (addressParts.length > 0 ? addressParts.join(', ') : null);
+    if (!address) {
+      if (rawTags.name) {
+        address = `${rawTags.name}, West Bengal (${centerLat.toFixed(4)}°N, ${centerLng.toFixed(4)}°E)`;
+      } else {
+        address = `Plot at ${centerLat.toFixed(5)}° N, ${centerLng.toFixed(5)}° E, West Bengal`;
+      }
+    }
+
     const ownerName =
       rawTags.operator ||
       rawTags.name ||
-      WB_OWNERS[hash % WB_OWNERS.length];
+      (category === 'Commercial'
+        ? 'Commercial Entity (Owner Record Pending)'
+        : category === 'Agricultural'
+          ? 'Agricultural Holding (Owner Record Pending)'
+          : 'Private Parcel (Owner Record Pending)');
 
-    const khasraNo = `Dag ${101 + (hash % 600)}/${1 + (hash % 15)}`;
+    const khasraNo = rawTags['ref:khasra'] || rawTags['ref:dag'] || rawTags['cadastre:khasra'] || '';
     const plotId = `WB-PL-${featureId.replace(/\D/g, '').slice(-5) || (100 + index)}`;
 
     return {
@@ -128,7 +201,13 @@ function enrichOsmFeatures(features) {
         plotId,
         ownerName,
         khasraNo,
+        address,
+        coordinates: {
+          lat: centerLat,
+          lng: centerLng
+        },
         landAreaSqM: areaSqM,
+        landAreaSqKm: areaSqKm,
         landCategory: category,
         ratePerSqM: rate,
         osmId: featureId,
@@ -266,7 +345,7 @@ app.get('/api/plots', (req, res) => {
   }
 });
 
-// 3. SPATIAL INTERSECTION API ENDPOINT (WITH DYNAMIC OVERPASS FETCH & BUFFER)
+// 3. SPATIAL INTERSECTION API ENDPOINT (WITH MULTI-POINT CORRIDOR & DYNAMIC OVERPASS FETCH)
 app.post('/api/land/intersect', async (req, res) => {
   try {
     const { points, widthInMeters } = req.body;
@@ -285,21 +364,49 @@ app.post('/api/land/intersect', async (req, res) => {
       });
     }
 
-    const [pointA, pointB] = points;
-    if (!pointA || !pointB || pointA.length < 2 || pointB.length < 2) {
+    // Validate all points
+    const parsedPoints = [];
+    for (let i = 0; i < points.length; i++) {
+      const pt = points[i];
+      if (!pt || !Array.isArray(pt) || pt.length < 2) {
+        return res.status(400).json({
+          error: `Point at index ${i} is invalid. Expected [lat, lng].`
+        });
+      }
+      const lat = parseFloat(pt[0]);
+      const lng = parseFloat(pt[1]);
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({
+          error: `Point at index ${i} contains non-numeric coordinates: [${pt[0]}, ${pt[1]}].`
+        });
+      }
+      // Deduplicate immediate consecutive identical points
+      if (parsedPoints.length > 0) {
+        const last = parsedPoints[parsedPoints.length - 1];
+        if (Math.abs(last[0] - lat) < 1e-7 && Math.abs(last[1] - lng) < 1e-7) {
+          continue;
+        }
+      }
+      parsedPoints.push([lat, lng]);
+    }
+
+    if (parsedPoints.length < 2) {
       return res.status(400).json({
-        error: 'Both Point A and Point B must contain valid [latitude, longitude].'
+        error: 'At least two distinct coordinate points are required to form an alignment corridor.'
       });
     }
 
     // Convert [lat, lng] to Turf.js [lng, lat]
-    const coordA = [pointA[1], pointA[0]];
-    const coordB = [pointB[1], pointB[0]];
+    const turfCoords = parsedPoints.map(([lat, lng]) => [lng, lat]);
 
-    // Construct LineString between Point A and Point B
-    const line = turf.lineString([coordA, coordB]);
+    // Construct multi-point LineString
+    const line = turf.lineString(turfCoords);
 
-    // 1. Calculate a bounding box with ~400m padding around the corridor
+    // Calculate alignment distance
+    const totalLengthKm = Number(turf.length(line, { units: 'kilometers' }).toFixed(3));
+    const totalLengthMeters = Math.round(totalLengthKm * 1000);
+
+    // 1. Calculate a bounding box with ~400m padding around the entire corridor alignment
     const padded = turf.buffer(line, 0.4, { units: 'kilometers' });
     const bbox = turf.bbox(padded); // [minLng, minLat, maxLng, maxLat]
     const south = bbox[1].toFixed(5);
@@ -307,7 +414,7 @@ app.post('/api/land/intersect', async (req, res) => {
     const north = bbox[3].toFixed(5);
     const east = bbox[2].toFixed(5);
 
-    console.log(`[Corridor Analysis] Point A: [${pointA}], Point B: [${pointB}], Width: ${width}m`);
+    console.log(`[Corridor Analysis] Points: ${parsedPoints.length} vertices, Length: ${totalLengthKm} km (${totalLengthMeters}m), Width: ${width}m`);
     console.log(`[Bounding Box] S: ${south}, W: ${west}, N: ${north}, E: ${east}`);
 
     // Fetch live OpenStreetMap features for this area of West Bengal
@@ -326,8 +433,8 @@ app.post('/api/land/intersect', async (req, res) => {
       dataSource = 'fallback';
     }
 
-    // 3. Create bridge buffer polygon using turf.buffer(line, radius, { units: 'meters' })
-    const radius = width / 2; // e.g. 10m radius for a 20m bridge
+    // 3. Create bridge/corridor buffer polygon using turf.buffer(line, radius, { units: 'meters' })
+    const radius = width / 2; // e.g. 10m radius for a 20m infrastructure corridor
     const bridgeBuffer = turf.buffer(line, radius, { units: 'meters' });
 
     // Perform booleanIntersects check against all live-fetched OSM plots
@@ -343,12 +450,30 @@ app.post('/api/land/intersect', async (req, res) => {
       }
     });
 
+    // Dynamic reverse geocoding for affected plots to provide precise real-world addresses to surveyors
+    if (dataSource === 'overpass' && affectedPlots.length > 0) {
+      console.log(`[Reverse Geocode] Resolving real OSM addresses for ${affectedPlots.length} affected features via Nominatim...`);
+      await Promise.all(
+        affectedPlots.map(async (plot) => {
+          const lat = plot.properties?.coordinates?.lat;
+          const lng = plot.properties?.coordinates?.lng;
+          if (lat && lng) {
+            const realAddress = await reverseGeocodeCoordinates(lat, lng);
+            if (realAddress) {
+              plot.properties.address = realAddress;
+            }
+          }
+        })
+      );
+    }
+
     // Compute summary metrics
     const totalPlots = affectedPlots.length;
     const totalAreaSqM = affectedPlots.reduce(
       (acc, p) => acc + (p.properties.landAreaSqM || 0),
       0
     );
+    const totalAreaSqKm = Number(((totalAreaSqM || 0) / 1_000_000).toFixed(5));
     const totalEstimatedCost = affectedPlots.reduce(
       (acc, p) => acc + (p.properties.landAreaSqM || 0) * (p.properties.ratePerSqM || 0),
       0
@@ -357,17 +482,22 @@ app.post('/api/land/intersect', async (req, res) => {
     const summary = {
       totalPlots,
       totalAreaSqM,
-      totalEstimatedCost
+      totalAreaSqKm,
+      totalEstimatedCost,
+      totalLengthKm,
+      totalLengthMeters
     };
 
     console.log(
-      `[Spatial Intersect] (${dataSource}) Processed corridor with width ${width}m: ${totalPlots} affected plot(s) out of ${plotsToIntersect.length} in area, total area: ${totalAreaSqM}m², total cost: ₹${totalEstimatedCost.toLocaleString('en-IN')}`
+      `[Spatial Intersect] (${dataSource}) Processed multi-segment corridor (${parsedPoints.length} pts, ${totalLengthKm}km, width ${width}m): ${totalPlots} affected plot(s) out of ${plotsToIntersect.length} in area, total area: ${totalAreaSqM}m², total cost: ₹${totalEstimatedCost.toLocaleString('en-IN')}`
     );
 
     res.json({
       bridgeBuffer,
       affectedPlots,
       summary,
+      totalLengthKm,
+      totalLengthMeters,
       allPlotsInArea: plotsToIntersect,
       source: dataSource,
       bbox: { south, west, north, east }
