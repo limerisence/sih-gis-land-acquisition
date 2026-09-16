@@ -127,7 +127,7 @@ function AppContent() {
           {userRole && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs bg-slate-800 border border-slate-700">
               <Server className={`w-3.5 h-3.5 ${backendOnline ? 'text-emerald-400' : 'text-amber-400'}`} />
-              <span className="text-slate-300">:5000</span>
+              <span className="text-slate-300">API</span>
               {dataSource && (
                 <span
                   className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${

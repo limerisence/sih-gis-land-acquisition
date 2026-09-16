@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { cadastralPlots as fallbackPlots } from '../data/cadastralPlots';
 import * as turf from '@turf/turf';
-
-export const BACKEND_URL = 'http://localhost:5000';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'https://sih-gis-land-acquisition.onrender.com';
 
 // Helpers
 export const isBuilding = (f) => Boolean(f?.properties?.buildingType);
