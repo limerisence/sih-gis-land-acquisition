@@ -174,6 +174,22 @@ export function GISProvider({ children }) {
       setLoadingStage('Computing multi-segment Turf.js intersections…');
       const result = await resp.json();
 
+      // If Overpass was unavailable, show a clear retry message and do nothing else.
+      // Never display dummy/fallback data.
+      if (result.overpassUnavailable) {
+        setDataSource('unavailable');
+        showToast(
+          '⚠ Live map data temporarily unavailable — all Overpass mirrors are down. Please retry in a moment.',
+          'error'
+        );
+        // Still draw the corridor buffer so the user can see their alignment
+        if (result.bridgeBuffer) {
+          setBridgeBuffer(result.bridgeBuffer);
+          setBufferVersion((v) => v + 1);
+        }
+        return;
+      }
+
       if (result.allPlotsInArea?.length > 0) {
         setAllFeatures(result.allPlotsInArea);
         setLandVersion((v) => v + 1);
@@ -191,12 +207,11 @@ export function GISProvider({ children }) {
       setSummary(result.summary || null);
       setIsCalculated(true);
       setBackendOnline(true);
-      setDataSource(result.source || 'fallback');
+      setDataSource(result.source || 'overpass');
 
-      const src = result.source === 'overpass' ? 'Live OSM' : 'Local Data';
       const lenKm = result.totalLengthKm || (result.summary?.totalLengthKm ?? 0);
       showToast(
-        `${src}: ${plots.length} land plots · ${buildings.length} buildings hit along ${lenKm} km alignment`,
+        `Live OSM: ${plots.length} land plots · ${buildings.length} buildings hit along ${lenKm} km alignment`,
         plots.length + buildings.length > 0 ? 'success' : 'info'
       );
     } catch (err) {

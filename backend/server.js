@@ -221,14 +221,14 @@ function enrichOsmFeatures(features) {
 
 // 1. DYNAMIC OVERPASS API CLIENT WITH MULTI-MIRROR FAILOVER & OUT GEOM
 async function fetchOverpassFeatures(south, west, north, east) {
-  // Use 'out geom' for 10x faster response time and 85% smaller payload (avoids node recursion)
-  const query = `[out:json][timeout:25];
+  // Cap at 500 elements to keep payload small and fast on low-memory instances
+  const query = `[out:json][timeout:20];
 (
   way["building"](${south},${west},${north},${east});
   way["landuse"](${south},${west},${north},${east});
   relation["landuse"](${south},${west},${north},${east});
 );
-out geom;`;
+out geom 500;`;
 
   // Diversified global Overpass mirrors across different infrastructure providers
   const mirrors = [
@@ -243,7 +243,7 @@ out geom;`;
     try {
       console.log(`[Overpass API] Querying ${mirror.name} (POST) for bbox [S:${south}, W:${west}, N:${north}, E:${east}]...`);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const response = await fetch(mirror.url, {
         method: 'POST',
@@ -405,93 +405,52 @@ app.post('/api/land/intersect', async (req, res) => {
     console.log(`[Bounding Box] S: ${south}, W: ${west}, N: ${north}, E: ${east}`);
 
     // Fetch live OpenStreetMap features for this area of West Bengal
-    let rawOsmPolygons = await fetchOverpassFeatures(south, west, north, east);
-    let plotsToIntersect = [];
-    let dataSource = 'overpass';
+    const rawOsmPolygons = await fetchOverpassFeatures(south, west, north, east);
 
-    if (rawOsmPolygons && rawOsmPolygons.length > 0) {
-      // 2. Metadata enrichment on the fly
-      plotsToIntersect = enrichOsmFeatures(rawOsmPolygons);
-      console.log(`[Enriched Plots] Generated ${plotsToIntersect.length} dynamic cadastral plots from OSM.`);
-    } else {
-      // Fallback: check static dataset first
-      console.log('[Overpass API] Falling back to local/cadastral dataset.');
-      plotsToIntersect = plotsData.features || [];
-      dataSource = 'fallback';
+    // If all Overpass mirrors failed, return an honest empty result.
+    // Never fabricate or substitute synthetic/dummy plot data.
+    if (!rawOsmPolygons || rawOsmPolygons.length === 0) {
+      console.log('[Overpass API] All mirrors unavailable. Returning empty result — no dummy data generated.');
+      const bridgeBuffer = turf.buffer(line, width / 2, { units: 'meters' });
+      return res.json({
+        bridgeBuffer,
+        affectedPlots: [],
+        allPlotsInArea: [],
+        summary: {
+          totalPlots: 0,
+          totalAreaSqM: 0,
+          totalAreaSqKm: 0,
+          totalEstimatedCost: 0,
+          totalLengthKm,
+          totalLengthMeters
+        },
+        totalLengthKm,
+        totalLengthMeters,
+        source: 'unavailable',
+        overpassUnavailable: true,
+        bbox: { south, west, north, east }
+      });
     }
 
-    // 3. Create bridge/corridor buffer polygon using turf.buffer(line, radius, { units: 'meters' })
-    const radius = width / 2; // e.g. 10m radius for a 20m infrastructure corridor
-    const bridgeBuffer = turf.buffer(line, radius, { units: 'meters' });
+    // Enrich OSM features with metadata
+    const plotsToIntersect = enrichOsmFeatures(rawOsmPolygons);
+    const dataSource = 'overpass';
+    console.log(`[Enriched Plots] Generated ${plotsToIntersect.length} dynamic cadastral plots from OSM.`);
 
-    // Perform booleanIntersects check against all candidate plots
-    let affectedPlots = [];
+    // Create corridor buffer polygon
+    const bridgeBuffer = turf.buffer(line, width / 2, { units: 'meters' });
+
+    // Perform booleanIntersects check against all OSM plots
+    const affectedPlots = [];
     plotsToIntersect.forEach((plot) => {
       try {
-        const isIntersecting = turf.booleanIntersects(plot, bridgeBuffer);
-        if (isIntersecting) {
+        if (turf.booleanIntersects(plot, bridgeBuffer)) {
           affectedPlots.push(plot);
         }
       } catch (err) {
         // ignore degenerate geometry
       }
     });
-
-    // If Overpass failed and static dataset has 0 intersecting plots along this drawn alignment,
-    // dynamically generate realistic cadastral survey parcels directly along the corridor alignment path.
-    if (affectedPlots.length === 0 && dataSource === 'fallback') {
-      console.log(`[Cadastral Engine] Generating dynamic cadastral survey parcels along the ${totalLengthKm}km alignment...`);
-      const stepKm = Math.min(0.2, Math.max(0.06, totalLengthKm / 8)); // 60m to 200m parcel intervals
-      const parcelCount = Math.max(3, Math.min(25, Math.ceil(totalLengthKm / stepKm)));
-      const syntheticPlots = [];
-
-      for (let i = 0; i < parcelCount; i++) {
-        const distanceAlong = Math.min(totalLengthKm, (i + 0.5) * (totalLengthKm / parcelCount));
-        const centerPt = turf.along(line, distanceAlong, { units: 'kilometers' });
-        const [cLng, cLat] = centerPt.geometry.coordinates;
-
-        // Generate parcel box around the point (~40m to 70m)
-        const parcelRadiusKm = (width * 1.4 + 20) / 1000;
-        const parcelPolygon = turf.buffer(centerPt, parcelRadiusKm, { units: 'kilometers', steps: 4 });
-
-        const hash = hashString(`WB-CAD-${i}-${cLat.toFixed(4)}-${cLng.toFixed(4)}`);
-        const catList = ['Residential', 'Commercial', 'Agricultural', 'Residential'];
-        const category = catList[i % catList.length];
-        const rate = category === 'Commercial' ? 14500 : category === 'Agricultural' ? 4200 : 6800;
-        const areaSqM = Math.round(turf.area(parcelPolygon));
-        const areaSqKm = Number((areaSqM / 1_000_000).toFixed(6));
-        const plotId = `WB-PL-${5100 + i}`;
-        const khasraNo = `${120 + ((i * 47) % 500)}/${['A', 'B', 'C', 'D'][i % 4]}`;
-        const ownerName = WB_OWNERS[i % WB_OWNERS.length];
-
-        const parcelFeature = {
-          type: 'Feature',
-          id: plotId,
-          geometry: parcelPolygon.geometry,
-          properties: {
-            plotId,
-            ownerName,
-            khasraNo,
-            address: `Plot at ${cLat.toFixed(5)}° N, ${cLng.toFixed(5)}° E, West Bengal (Dag No. ${khasraNo})`,
-            coordinates: {
-              lat: Number(cLat.toFixed(6)),
-              lng: Number(cLng.toFixed(6))
-            },
-            landAreaSqM: areaSqM,
-            landAreaSqKm: areaSqKm,
-            landCategory: category,
-            ratePerSqM: rate,
-            osmId: `cad-${i + 1}`,
-            name: `${category} Parcel (Cadastral Survey)`
-          }
-        };
-
-        syntheticPlots.push(parcelFeature);
-        affectedPlots.push(parcelFeature);
-      }
-
-      plotsToIntersect = [...plotsToIntersect, ...syntheticPlots];
-    }
 
     // Dynamic reverse geocoding for affected plots to provide precise real-world addresses to surveyors
     if (dataSource === 'overpass' && affectedPlots.length > 0) {

@@ -38,18 +38,18 @@ export default function Sidebar() {
           className={`px-4 py-1.5 border-b flex items-center gap-2 text-xs font-medium shrink-0 ${
             dataSource === 'overpass'
               ? 'bg-emerald-950/40 border-emerald-900/40 text-emerald-300'
-              : 'bg-amber-950/40 border-amber-900/40 text-amber-300'
+              : 'bg-red-950/40 border-red-900/40 text-red-300'
           }`}
         >
           {dataSource === 'overpass' ? (
             <Wifi className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
           ) : (
-            <WifiOff className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+            <WifiOff className="w-3.5 h-3.5 shrink-0 text-red-400" />
           )}
           <span className="truncate">
             {dataSource === 'overpass'
               ? `Live Overpass API — ${allFeatures.length} OSM features in area`
-              : 'Overpass unavailable — local cadastral fallback active'}
+              : 'Overpass unavailable — retry to fetch real plot data'}
           </span>
         </div>
       )}
