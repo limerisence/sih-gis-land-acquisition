@@ -9,6 +9,7 @@ import PortalGateModal from './components/PortalGateModal';
 import FeatureDetailModal from './components/FeatureDetailModal';
 import MunicipalOfficerLayout from './layouts/MunicipalOfficerLayout';
 import SurveyorLayout from './layouts/SurveyorLayout';
+import FinanceOfficerLayout from './layouts/FinanceOfficerLayout';
 import BeneficiaryLayout from './layouts/BeneficiaryLayout';
 
 // Role badge shown in the navbar
@@ -68,6 +69,7 @@ function AppContent() {
     if (!userRole || isGateOpen) return null; // gate covers everything
     if (userRole === ROLES.MUNICIPAL_OFFICER) return <MunicipalOfficerLayout />;
     if (userRole === ROLES.SURVEYOR)          return <SurveyorLayout />;
+    if (userRole === ROLES.FINANCE_OFFICER)   return <FinanceOfficerLayout />;
     if (userRole === ROLES.BENEFICIARY)       return <BeneficiaryLayout />;
     return null;
   };

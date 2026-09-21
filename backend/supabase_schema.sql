@@ -60,8 +60,12 @@ CREATE TABLE IF NOT EXISTS survey_tasks (
 -- 4. DISBURSEMENTS TABLE
 CREATE TABLE IF NOT EXISTS disbursements (
   task_id TEXT PRIMARY KEY REFERENCES survey_tasks(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'Processing', -- 'Processing', 'Disbursed', 'Stalled'
+  status TEXT NOT NULL DEFAULT 'NOT_INITIATED', -- 'NOT_INITIATED', 'INITIATED', 'TREASURY_VERIFYING', 'DISBURSED', 'Stalled'
   award_amount NUMERIC NOT NULL DEFAULT 0,
+  beneficiary_name TEXT DEFAULT '',
+  bank_reference_id TEXT DEFAULT NULL,
+  initiated_at TIMESTAMPTZ DEFAULT NULL,
+  disbursed_at TIMESTAMPTZ DEFAULT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

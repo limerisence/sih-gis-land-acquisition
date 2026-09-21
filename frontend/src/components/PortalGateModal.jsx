@@ -78,7 +78,11 @@ export default function PortalGateModal() {
           setAuthLoading(false);
           return;
         }
-        const desig = selectedGovtRole === ROLES.SURVEYOR ? 'Field Surveyor' : 'Municipal Planning Officer';
+        const desig = selectedGovtRole === ROLES.SURVEYOR
+          ? 'Field Surveyor'
+          : selectedGovtRole === ROLES.FINANCE_OFFICER
+          ? 'Finance & Accounts Officer'
+          : 'Municipal Planning Officer';
         await signUpWithSupabase(email.trim(), password.trim(), fullName.trim(), selectedGovtRole, desig);
       } else {
         if (!email.trim() || !password.trim()) {
@@ -288,30 +292,42 @@ export default function PortalGateModal() {
                   <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
                     Designated Role
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedGovtRole(ROLES.MUNICIPAL_OFFICER)}
-                      className="p-2.5 rounded-xl border text-left cursor-pointer transition-all"
+                      className="p-2 rounded-xl border text-left cursor-pointer transition-all"
                       style={{
                         background: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? 'rgba(16,185,129,.15)' : 'rgba(30,41,59,.4)',
                         borderColor: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? '#10b981' : 'rgba(100,116,139,.25)',
                       }}
                     >
-                      <div className="text-sm">🗺️</div>
-                      <div className="text-xs font-bold text-white mt-0.5">Municipal Officer</div>
+                      <div className="text-base">🗺️</div>
+                      <div className="text-[11px] font-bold text-white mt-0.5 leading-tight">Municipal Officer</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedGovtRole(ROLES.SURVEYOR)}
-                      className="p-2.5 rounded-xl border text-left cursor-pointer transition-all"
+                      className="p-2 rounded-xl border text-left cursor-pointer transition-all"
                       style={{
                         background: selectedGovtRole === ROLES.SURVEYOR ? 'rgba(56,189,248,.15)' : 'rgba(30,41,59,.4)',
                         borderColor: selectedGovtRole === ROLES.SURVEYOR ? '#38bdf8' : 'rgba(100,116,139,.25)',
                       }}
                     >
-                      <div className="text-sm">🔍</div>
-                      <div className="text-xs font-bold text-white mt-0.5">Field Surveyor</div>
+                      <div className="text-base">🔍</div>
+                      <div className="text-[11px] font-bold text-white mt-0.5 leading-tight">Field Surveyor</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGovtRole(ROLES.FINANCE_OFFICER)}
+                      className="p-2 rounded-xl border text-left cursor-pointer transition-all"
+                      style={{
+                        background: selectedGovtRole === ROLES.FINANCE_OFFICER ? 'rgba(251,191,36,.15)' : 'rgba(30,41,59,.4)',
+                        borderColor: selectedGovtRole === ROLES.FINANCE_OFFICER ? '#fbbf24' : 'rgba(100,116,139,.25)',
+                      }}
+                    >
+                      <div className="text-base">💰</div>
+                      <div className="text-[11px] font-bold text-white mt-0.5 leading-tight">Finance Officer</div>
                     </button>
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 export const ROLES = {
   MUNICIPAL_OFFICER: 'MUNICIPAL_OFFICER',
   SURVEYOR: 'SURVEYOR',
+  FINANCE_OFFICER: 'FINANCE_OFFICER',
   BENEFICIARY: 'BENEFICIARY',
 };
 
@@ -25,6 +26,14 @@ export const ROLE_META = {
     bg: 'rgba(56,189,248,.15)',
     border: 'rgba(56,189,248,.35)',
   },
+  FINANCE_OFFICER: {
+    label: 'Finance Officer',
+    sublabel: 'Treasury & Disbursements',
+    icon: '💰',
+    color: '#fbbf24',   // amber
+    bg: 'rgba(251,191,36,.15)',
+    border: 'rgba(251,191,36,.35)',
+  },
   BENEFICIARY: {
     label: 'Land Owner',
     sublabel: 'Beneficiary Portal',
@@ -35,7 +44,7 @@ export const ROLE_META = {
   },
 };
 
-// Demo presets (for hackathon quick-login)
+// Demo presets (for quick-login)
 export const DEMO_PRESETS = [
   {
     role: ROLES.MUNICIPAL_OFFICER,
@@ -50,6 +59,13 @@ export const DEMO_PRESETS = [
     designation: 'Senior Field Surveyor, BNDA',
     token: 'demo-surveyor-def456',
     email: 'surveyor@bhoomi.gov.in',
+  },
+  {
+    role: ROLES.FINANCE_OFFICER,
+    name: 'Amitava Roy',
+    designation: 'Chief Accounts & Treasury Officer',
+    token: 'demo-finance-xyz789',
+    email: 'finance@bhoomi.gov.in',
   },
   {
     role: ROLES.BENEFICIARY,
@@ -116,7 +132,7 @@ export function AuthProvider({ children }) {
           id: session.user.id,
           email: session.user.email,
           name: metadata.name || session.user.email?.split('@')[0] || 'Officer',
-          designation: metadata.designation || (role === ROLES.SURVEYOR ? 'Field Surveyor' : 'Municipal Officer'),
+          designation: metadata.designation || (role === ROLES.SURVEYOR ? 'Field Surveyor' : role === ROLES.FINANCE_OFFICER ? 'Finance & Accounts Officer' : 'Municipal Officer'),
         });
         setIsGateOpen(false);
       } else if (event === 'SIGNED_OUT') {
@@ -154,7 +170,7 @@ export function AuthProvider({ children }) {
         id: user.id,
         email: user.email,
         name: metadata.name || email.split('@')[0],
-        designation: metadata.designation || (role === ROLES.SURVEYOR ? 'Field Surveyor' : 'Municipal Officer'),
+        designation: metadata.designation || (role === ROLES.SURVEYOR ? 'Field Surveyor' : role === ROLES.FINANCE_OFFICER ? 'Finance & Accounts Officer' : 'Municipal Officer'),
       };
       login(role, data.session?.access_token || 'supabase-token', profile);
       return profile;

@@ -247,7 +247,15 @@ export const dataService = {
         if (!error && data) {
           const map = {};
           data.forEach((r) => {
-            map[r.task_id] = { status: r.status, awardAmount: Number(r.award_amount) };
+            map[r.task_id] = {
+              status: r.status || 'NOT_INITIATED',
+              awardAmount: Number(r.award_amount || 0),
+              beneficiaryName: r.beneficiary_name || '',
+              bankReferenceId: r.bank_reference_id || null,
+              initiatedAt: r.initiated_at || null,
+              disbursedAt: r.disbursed_at || null,
+              updatedAt: r.updated_at || null,
+            };
           });
           saveRaw(LS_DISBURSE_KEY, map);
           return map;
@@ -259,14 +267,85 @@ export const dataService = {
     return loadRaw(LS_DISBURSE_KEY, {});
   },
 
+  async getDisbursementForTask(taskId) {
+    if (!taskId) return null;
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('disbursements')
+          .select('*')
+          .eq('task_id', taskId)
+          .single();
+        if (!error && data) {
+          const record = {
+            status: data.status || 'NOT_INITIATED',
+            awardAmount: Number(data.award_amount || 0),
+            beneficiaryName: data.beneficiary_name || '',
+            bankReferenceId: data.bank_reference_id || null,
+            initiatedAt: data.initiated_at || null,
+            disbursedAt: data.disbursed_at || null,
+            updatedAt: data.updated_at || null,
+          };
+          const currentMap = loadRaw(LS_DISBURSE_KEY, {});
+          currentMap[taskId] = record;
+          saveRaw(LS_DISBURSE_KEY, currentMap);
+          return record;
+        }
+      } catch (e) {
+        console.warn('[DataService] getDisbursementForTask failed:', e);
+      }
+    }
+    const currentMap = loadRaw(LS_DISBURSE_KEY, {});
+    return currentMap[taskId] || null;
+  },
+
+  async upsertDisbursement(taskId, updates) {
+    if (!taskId) return;
+    const currentMap = loadRaw(LS_DISBURSE_KEY, {});
+    const prev = currentMap[taskId] || {
+      status: 'NOT_INITIATED',
+      awardAmount: 0,
+      beneficiaryName: '',
+      bankReferenceId: null,
+      initiatedAt: null,
+      disbursedAt: null,
+    };
+    const merged = { ...prev, ...updates, updatedAt: new Date().toISOString() };
+    currentMap[taskId] = merged;
+    saveRaw(LS_DISBURSE_KEY, currentMap);
+
+    if (isSupabaseConfigured) {
+      try {
+        const dbRow = {
+          task_id: taskId,
+          status: merged.status,
+          award_amount: merged.awardAmount,
+          beneficiary_name: merged.beneficiaryName || null,
+          bank_reference_id: merged.bankReferenceId || null,
+          initiated_at: merged.initiatedAt || null,
+          disbursed_at: merged.disbursedAt || null,
+          updated_at: merged.updatedAt,
+        };
+        await supabase.from('disbursements').upsert([dbRow], { onConflict: 'task_id' });
+      } catch (e) {
+        console.warn('[DataService] Supabase upsertDisbursement error:', e);
+      }
+    }
+    return merged;
+  },
+
   async saveDisbursements(disbMap) {
     saveRaw(LS_DISBURSE_KEY, disbMap);
     if (isSupabaseConfigured) {
       try {
         const rows = Object.entries(disbMap).map(([taskId, val]) => ({
           task_id: taskId,
-          status: val.status,
-          award_amount: val.awardAmount,
+          status: val.status || 'NOT_INITIATED',
+          award_amount: val.awardAmount || 0,
+          beneficiary_name: val.beneficiaryName || null,
+          bank_reference_id: val.bankReferenceId || null,
+          initiated_at: val.initiatedAt || null,
+          disbursed_at: val.disbursedAt || null,
           updated_at: new Date().toISOString(),
         }));
         if (rows.length > 0) {
@@ -284,9 +363,9 @@ export const dataService = {
 
     const channel = supabase
       .channel('bhoomi-realtime-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => callback('projects'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'survey_tasks' }, () => callback('tasks'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'disbursements' }, () => callback('disbursements'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => callback('projects', payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'survey_tasks' }, (payload) => callback('tasks', payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'disbursements' }, (payload) => callback('disbursements', payload))
       .subscribe();
 
     return () => {
