@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useAuth, ROLES, ROLE_META, DEMO_PRESETS } from '../context/AuthContext';
+import React, { useState } from 'react';
+import { useAuth, ROLES } from '../context/AuthContext';
 
 // Tier 1 portal card data
 const PORTAL_CARDS = [
@@ -29,37 +29,12 @@ const PORTAL_CARDS = [
   },
 ];
 
-// Tier 2 govt sub-role cards
-const GOVT_ROLES = [
-  {
-    role: ROLES.MUNICIPAL_OFFICER,
-    icon: '🗺️',
-    title: 'Municipal Officer',
-    subtitle: 'Planner & Admin',
-    desc: 'Design corridor alignments, run spatial analysis, and dispatch survey tasks',
-    color: '#10b981',
-    bg: 'rgba(16,185,129,.12)',
-    border: 'rgba(16,185,129,.3)',
-  },
-  {
-    role: ROLES.SURVEYOR,
-    icon: '🔍',
-    title: 'Field Surveyor',
-    subtitle: 'Ground Inspector',
-    desc: 'View assigned survey tickets, update plot verification status on-site',
-    color: '#38bdf8',
-    bg: 'rgba(56,189,248,.12)',
-    border: 'rgba(56,189,248,.3)',
-  },
-];
-
 export default function PortalGateModal() {
-  const { login, loginWithSupabase, signUpWithSupabase, isGateOpen, isSupabaseConfigured, userRole } = useAuth();
-  const [tier, setTier] = useState(1); // 1 = main, 2 = govt sub-picker, 3 = citizen
+  const { login, loginWithSupabase, signUpWithSupabase, isGateOpen } = useAuth();
+  const [tier, setTier] = useState(1); // 1 = main, 2 = govt supabase auth, 3 = citizen
   const [animating, setAnimating] = useState(false);
 
-  // Govt Auth Sub-Mode: 'quick' (instant role cards) or 'supabase' (email+pwd)
-  const [govtAuthMode, setGovtAuthMode] = useState('quick');
+  // Govt Supabase Auth state
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,11 +65,6 @@ export default function PortalGateModal() {
     setAnimating(true);
     setLoginErr('');
     setTimeout(() => { setTier(1); setAnimating(false); }, 180);
-  };
-
-  const handleRoleLogin = (role) => {
-    const preset = DEMO_PRESETS.find((p) => p.role === role);
-    login(role, preset?.token || 'demo-token', preset ? { name: preset.name, designation: preset.designation } : null);
   };
 
   const handleSupabaseGovtAuth = async (e) => {
@@ -166,7 +136,7 @@ export default function PortalGateModal() {
         />
       </div>
 
-      <div className="relative w-full max-w-2xl mx-4 flex flex-col items-center gap-6">
+      <div className="relative w-full max-w-xl mx-4 flex flex-col items-center gap-6">
 
         {/* Header */}
         <div className="text-center">
@@ -216,7 +186,6 @@ export default function PortalGateModal() {
                     onClick={() => card.id === 'govt' ? goToTier2() : goToTier3()}
                     className="relative group text-left p-5 rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden"
                     style={{
-                      background: `linear-gradient(135deg, ${card.gradient.replace('from-', '').replace('via-', '').replace('to-', '')})`,
                       backgroundImage: `linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,1) 100%)`,
                       border: `1px solid rgba(100,116,139,0.25)`,
                     }}
@@ -237,7 +206,7 @@ export default function PortalGateModal() {
                       className="mt-4 text-xs font-semibold flex items-center gap-1 transition-colors"
                       style={{ color: card.accentColor }}
                     >
-                      {card.id === 'govt' ? 'Select Role →' : 'Enter Portal →'}
+                      {card.id === 'govt' ? 'Official Sign In →' : 'Enter Portal →'}
                     </div>
                   </button>
                 ))}
@@ -245,7 +214,7 @@ export default function PortalGateModal() {
             </div>
           )}
 
-          {/* Tier 2 — Govt Sub-Picker with Supabase Auth */}
+          {/* Tier 2 — Govt Supabase Cloud Auth */}
           {tier === 2 && (
             <div className="p-6">
               <button
@@ -256,37 +225,12 @@ export default function PortalGateModal() {
                 ← Back to Portal Selection
               </button>
 
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-sm font-semibold text-white">Government Access</p>
-                  <p className="text-xs text-slate-400">Authenticate for planning, survey & administrative access</p>
+              <div className="mb-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔐</span>
+                  <p className="text-sm font-semibold text-white">Government Official Access</p>
                 </div>
-
-                {/* Sub-mode selector tabs */}
-                <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => { setGovtAuthMode('quick'); setLoginErr(''); }}
-                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer"
-                    style={{
-                      background: govtAuthMode === 'quick' ? 'rgba(16,185,129,.2)' : 'transparent',
-                      color: govtAuthMode === 'quick' ? '#34d399' : '#94a3b8',
-                    }}
-                  >
-                    ⚡ Quick Access
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setGovtAuthMode('supabase'); setLoginErr(''); }}
-                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer"
-                    style={{
-                      background: govtAuthMode === 'supabase' ? 'rgba(56,189,248,.2)' : 'transparent',
-                      color: govtAuthMode === 'supabase' ? '#38bdf8' : '#94a3b8',
-                    }}
-                  >
-                    🔐 Supabase Cloud
-                  </button>
-                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Authenticate with your registered Supabase Cloud officer account</p>
               </div>
 
               {loginErr && (
@@ -295,130 +239,105 @@ export default function PortalGateModal() {
                 </div>
               )}
 
-              {govtAuthMode === 'quick' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {GOVT_ROLES.map((r) => (
-                    <button
-                      key={r.role}
-                      type="button"
-                      onClick={() => handleRoleLogin(r.role)}
-                      className="text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer"
-                      style={{
-                        background: r.bg,
-                        border: `1px solid ${r.border}`,
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = r.color + '80'; e.currentTarget.style.boxShadow = `0 0 20px ${r.color}18`; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = r.border; e.currentTarget.style.boxShadow = 'none'; }}
-                    >
-                      <div className="text-3xl mb-2">{r.icon}</div>
-                      <div className="font-bold text-sm text-white">{r.title}</div>
-                      <div className="text-[10px] font-semibold mb-2" style={{ color: r.color }}>{r.subtitle}</div>
-                      <p className="text-[11px] text-slate-400 leading-snug">{r.desc}</p>
-                      <div className="mt-3 text-xs font-semibold" style={{ color: r.color }}>Enter →</div>
-                    </button>
-                  ))}
+              <form onSubmit={handleSupabaseGovtAuth} className="space-y-3.5 max-w-md mx-auto">
+                {isSignUp && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
+                      Full Officer Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Priya Chakraborty"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
+                    Official Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="officer@bhoomi.gov.in"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  />
                 </div>
-              ) : (
-                <form onSubmit={handleSupabaseGovtAuth} className="space-y-3.5 max-w-md mx-auto">
-                  {isSignUp && (
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
-                        Full Officer Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Priya Chakraborty"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      />
-                    </div>
-                  )}
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
-                      Official Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="officer@bhoomi.gov.in"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
-                      Designated Role
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedGovtRole(ROLES.MUNICIPAL_OFFICER)}
-                        className="p-2.5 rounded-xl border text-left cursor-pointer transition-all"
-                        style={{
-                          background: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? 'rgba(16,185,129,.15)' : 'rgba(30,41,59,.4)',
-                          borderColor: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? '#10b981' : 'rgba(100,116,139,.25)',
-                        }}
-                      >
-                        <div className="text-sm">🗺️</div>
-                        <div className="text-xs font-bold text-white mt-0.5">Municipal Officer</div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedGovtRole(ROLES.SURVEYOR)}
-                        className="p-2.5 rounded-xl border text-left cursor-pointer transition-all"
-                        style={{
-                          background: selectedGovtRole === ROLES.SURVEYOR ? 'rgba(56,189,248,.15)' : 'rgba(30,41,59,.4)',
-                          borderColor: selectedGovtRole === ROLES.SURVEYOR ? '#38bdf8' : 'rgba(100,116,139,.25)',
-                        }}
-                      >
-                        <div className="text-sm">🔍</div>
-                        <div className="text-xs font-bold text-white mt-0.5">Field Surveyor</div>
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full py-2.5 mt-2 rounded-xl font-bold text-xs text-white transition-all cursor-pointer shadow-lg disabled:opacity-50"
-                    style={{
-                      background: 'linear-gradient(135deg, #0284c7, #0f766e)',
-                      boxShadow: '0 0 20px rgba(2,132,199,0.3)',
-                    }}
-                  >
-                    {authLoading ? 'Authenticating…' : isSignUp ? 'Register Supabase Cloud Account →' : 'Sign In with Supabase →'}
-                  </button>
-
-                  <div className="text-center pt-1">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
+                    Designated Role
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => { setIsSignUp(!isSignUp); setLoginErr(''); }}
-                      className="text-[11px] text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
+                      onClick={() => setSelectedGovtRole(ROLES.MUNICIPAL_OFFICER)}
+                      className="p-2.5 rounded-xl border text-left cursor-pointer transition-all"
+                      style={{
+                        background: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? 'rgba(16,185,129,.15)' : 'rgba(30,41,59,.4)',
+                        borderColor: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? '#10b981' : 'rgba(100,116,139,.25)',
+                      }}
                     >
-                      {isSignUp ? 'Already have an account? Sign In' : 'Need a new officer account? Register'}
+                      <div className="text-sm">🗺️</div>
+                      <div className="text-xs font-bold text-white mt-0.5">Municipal Officer</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGovtRole(ROLES.SURVEYOR)}
+                      className="p-2.5 rounded-xl border text-left cursor-pointer transition-all"
+                      style={{
+                        background: selectedGovtRole === ROLES.SURVEYOR ? 'rgba(56,189,248,.15)' : 'rgba(30,41,59,.4)',
+                        borderColor: selectedGovtRole === ROLES.SURVEYOR ? '#38bdf8' : 'rgba(100,116,139,.25)',
+                      }}
+                    >
+                      <div className="text-sm">🔍</div>
+                      <div className="text-xs font-bold text-white mt-0.5">Field Surveyor</div>
                     </button>
                   </div>
-                </form>
-              )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full py-2.5 mt-2 rounded-xl font-bold text-xs text-white transition-all cursor-pointer shadow-lg disabled:opacity-50"
+                  style={{
+                    background: 'linear-gradient(135deg, #0284c7, #0f766e)',
+                    boxShadow: '0 0 20px rgba(2,132,199,0.3)',
+                  }}
+                >
+                  {authLoading ? 'Authenticating…' : isSignUp ? 'Register Supabase Cloud Account →' : 'Sign In with Supabase →'}
+                </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setIsSignUp(!isSignUp); setLoginErr(''); }}
+                    className="text-[11px] text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
+                  >
+                    {isSignUp ? 'Already have an account? Sign In' : 'Need a new officer account? Register'}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
@@ -486,40 +405,11 @@ export default function PortalGateModal() {
               </form>
             </div>
           )}
-
-          {/* Divider */}
-          <div className="border-t border-slate-800/80 px-6 py-4">
-            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest mb-3 text-center">
-              ⚡ Quick Demo — Hackathon Preset Login
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {DEMO_PRESETS.map((preset) => {
-                const meta = ROLE_META[preset.role];
-                return (
-                  <button
-                    key={preset.role}
-                    type="button"
-                    onClick={() => login(preset.role, preset.token, { name: preset.name, designation: preset.designation })}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer hover:scale-105"
-                    style={{
-                      background: meta.bg,
-                      color: meta.color,
-                      border: `1px solid ${meta.border}`,
-                    }}
-                    title={`${preset.name} — ${preset.designation}`}
-                  >
-                    <span>{meta.icon}</span>
-                    <span>{meta.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
         <p className="text-[10px] text-slate-600 text-center">
-          Smart India Hackathon 2024 · West Bengal Municipal Authority · Powered by Overpass OSM + Turf.js
+          Smart India Hackathon 2026 · West Bengal Municipal Authority · Powered by Overpass OSM + Turf.js
         </p>
       </div>
     </div>
