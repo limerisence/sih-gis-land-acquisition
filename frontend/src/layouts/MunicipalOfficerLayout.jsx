@@ -34,6 +34,25 @@ function genProjectId() {
   return `PRJ-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
+export function isProjectOwnedByUser(project, userProfile) {
+  if (!project) return false;
+  if (!userProfile) return true;
+  const userEmail = userProfile.email?.toLowerCase().trim();
+  const userName = userProfile.name?.toLowerCase().trim();
+  const creator = (project.created_by || '').toLowerCase().trim();
+  const creatorName = (project.created_by_name || '').toLowerCase().trim();
+  const creatorId = project.created_by_id || '';
+
+  if (userEmail && creator === userEmail) return true;
+  if (userName && (creator === userName || creatorName === userName)) return true;
+  if (userProfile.id && creatorId === userProfile.id) return true;
+  if (userEmail && creator.includes(userEmail)) return true;
+  if (userName && creator.includes(userName)) return true;
+  // If legacy demo default project and user is default officer persona
+  if ((!creator || creator === 'municipal officer') && (userEmail === 'officer@bhoomi.gov.in' || userName?.includes('priya'))) return true;
+  return false;
+}
+
 // ─── Shared badge & icon helpers ──────────────────────────────────────────────
 const CAT_STYLE = {
   Commercial:   { bg: 'rgba(168,85,247,.18)',  color: '#c084fc', Icon: Building2 },
@@ -284,6 +303,7 @@ function DocumentViewerModal({ doc, onClose }) {
 function CommandHub({ onBranch, userProfile }) {
   const [allProjects, setAllProjects] = useState(loadProjects);
   const [allTasks, setAllTasks] = useState(loadTasks);
+  const [scopeFilter, setScopeFilter] = useState('my'); // 'my' | 'all'
 
   const refreshHub = useCallback(async () => {
     const [pList, tList] = await Promise.all([
@@ -302,11 +322,15 @@ function CommandHub({ onBranch, userProfile }) {
     return unsub;
   }, [refreshHub]);
 
+  const myProjects = useMemo(() => allProjects.filter((p) => isProjectOwnedByUser(p, userProfile)), [allProjects, userProfile]);
+  const scopedProjects = scopeFilter === 'my' ? myProjects : allProjects;
+  const scopedTasks = useMemo(() => allTasks.filter((t) => scopedProjects.some((p) => p.project_id === t.projectId)), [allTasks, scopedProjects]);
+
   const stats = {
-    projects: allProjects.length,
-    totalPlots: allTasks.length,
-    pending: allTasks.filter((t) => t.status === 'Pending').length,
-    completed: allTasks.filter((t) => t.status === 'Completed').length,
+    projects: scopedProjects.length,
+    totalPlots: scopedTasks.length,
+    pending: scopedTasks.filter((t) => t.status === 'Pending').length,
+    completed: scopedTasks.filter((t) => t.status === 'Completed').length,
   };
 
   const HUB_CARDS = [
@@ -357,9 +381,9 @@ function CommandHub({ onBranch, userProfile }) {
       style={{ background: 'radial-gradient(ellipse at 30% 0%, rgba(16,185,129,.05) 0%, transparent 60%), #030712' }}
     >
       <div className="max-w-4xl mx-auto px-6 py-10">
-        {/* Welcome header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
+        {/* Welcome header & Scope toggle */}
+        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
             <div
               className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl"
               style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.25)' }}
@@ -373,13 +397,39 @@ function CommandHub({ onBranch, userProfile }) {
               <p className="text-sm text-slate-400">{userProfile?.designation || 'Municipal Planning Officer'}</p>
             </div>
           </div>
+
+          {/* Project Workspace Scope Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setScopeFilter('my')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                scopeFilter === 'my'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>👤</span> My Projects ({myProjects.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setScopeFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                scopeFilter === 'all'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🏢</span> All Department ({allProjects.length})
+            </button>
+          </div>
         </div>
 
         {/* Quick stats strip */}
         <div className="grid grid-cols-4 gap-3 mb-10">
           {[
-            { label: 'Projects', val: stats.projects, color: '#10b981', Icon: FolderOpen },
-            { label: 'Total Plots', val: stats.totalPlots, color: '#38bdf8', Icon: MapPin },
+            { label: scopeFilter === 'my' ? 'My Projects' : 'Total Projects', val: stats.projects, color: '#10b981', Icon: FolderOpen },
+            { label: 'Scoped Plots', val: stats.totalPlots, color: '#38bdf8', Icon: MapPin },
             { label: 'Pending Survey', val: stats.pending, color: '#fbbf24', Icon: Clock },
             { label: 'Completed', val: stats.completed, color: '#34d399', Icon: CheckCircle2 },
           ].map(({ label, val, color, Icon }) => (
@@ -488,14 +538,14 @@ function GISBranch({ onBack, userProfile }) {
           areaSqM: p.landAreaSqM,
           ownerName: p.ownerName,
           status: 'Pending',
-          dispatchedBy: userProfile?.name || 'Municipal Officer',
+          dispatchedBy: userProfile?.name || userProfile?.email || 'Municipal Officer',
+          dispatchedByEmail: userProfile?.email || '',
           dispatchedAt: now,
           // Fields filled by surveyor later
           surveyorOwnerName: '',
           surveyorPhone: '',
           surveyorAadhaar: '',
           surveyorOwnerContact: '',
-          khasraNo: '',
           verifiedLandClass: p.landCategory || 'Residential',
           zoneType: p.zoneType || 'URBAN',
           isRural: p.zoneType === 'RURAL' || Boolean(p.isRural),
@@ -515,6 +565,9 @@ function GISBranch({ onBack, userProfile }) {
       project_name: projectName.trim(),
       created_at: now,
       status: 'PENDING',
+      created_by: userProfile?.email || userProfile?.name || 'Municipal Officer',
+      created_by_name: userProfile?.name || 'Municipal Officer',
+      created_by_id: userProfile?.id || '',
       baseRates: {
         Residential: Number(baseRates.Residential) || 4500,
         Commercial: Number(baseRates.Commercial) || 8500,
@@ -627,10 +680,13 @@ function GISBranch({ onBack, userProfile }) {
 // ════════════════════════════════════════════════════════════════════════════════
 // BRANCH 2 — Surveyor Report Status
 // ════════════════════════════════════════════════════════════════════════════════
-function ReportsBranch({ onBack }) {
+function ReportsBranch({ onBack, userProfile }) {
   const { showToast } = useGIS();
   const [allProjects, setAllProjects] = useState(loadProjects);
-  const [selectedProjId, setSelectedProjId] = useState(() => loadProjects()[0]?.project_id || '');
+  const [scopeFilter, setScopeFilter] = useState('my'); // 'my' | 'all'
+  const myProjects = useMemo(() => allProjects.filter((p) => isProjectOwnedByUser(p, userProfile)), [allProjects, userProfile]);
+  const scopedProjects = scopeFilter === 'my' && myProjects.length > 0 ? myProjects : allProjects;
+  const [selectedProjId, setSelectedProjId] = useState(() => (myProjects[0] || loadProjects()[0])?.project_id || '');
   const [tasks, setTasks] = useState(loadTasks);
   const [search, setSearch] = useState('');
   const [activeDoc, setActiveDoc] = useState(null);
@@ -642,12 +698,14 @@ function ReportsBranch({ onBack }) {
     ]);
     if (pList) {
       setAllProjects(pList);
-      if (!selectedProjId && pList.length > 0) {
-        setSelectedProjId(pList[0].project_id);
+      const currentMy = pList.filter((p) => isProjectOwnedByUser(p, userProfile));
+      const currentScoped = scopeFilter === 'my' && currentMy.length > 0 ? currentMy : pList;
+      if ((!selectedProjId || !currentScoped.some((p) => p.project_id === selectedProjId)) && currentScoped.length > 0) {
+        setSelectedProjId(currentScoped[0].project_id);
       }
     }
     if (tList) setTasks(tList);
-  }, [selectedProjId]);
+  }, [selectedProjId, scopeFilter, userProfile]);
 
   React.useEffect(() => {
     refreshReports();
@@ -810,8 +868,39 @@ function ReportsBranch({ onBack }) {
       <BranchHeader title="Surveyor Report Status" subtitle="Review submitted survey data · Approve, Review, or Reject" icon={ClipboardList} onBack={onBack} accentColor="#38bdf8" />
 
       <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ background: '#060a14' }}>
-        {/* Project picker row */}
+        {/* Project picker & scope row */}
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Scope Toggle */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setScopeFilter('my');
+                if (myProjects.length > 0 && !myProjects.some((p) => p.project_id === selectedProjId)) {
+                  setSelectedProjId(myProjects[0].project_id);
+                }
+              }}
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                scopeFilter === 'my'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>👤</span> My Projects ({myProjects.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setScopeFilter('all')}
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                scopeFilter === 'all'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🏢</span> All ({allProjects.length})
+            </button>
+          </div>
+
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
             <select
@@ -819,10 +908,10 @@ function ReportsBranch({ onBack }) {
               onChange={(e) => setSelectedProjId(e.target.value)}
               className="pl-8 pr-4 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white outline-none cursor-pointer"
             >
-              {allProjects.length === 0 && <option value="">No projects yet</option>}
-              {allProjects.map((p) => (
+              {scopedProjects.length === 0 && <option value="">No projects found</option>}
+              {scopedProjects.map((p) => (
                 <option key={p.project_id} value={p.project_id} style={{ background: '#1e293b' }}>
-                  {p.project_id} — {p.project_name}
+                  {p.project_id} — {p.project_name} {p.created_by_name ? `(${p.created_by_name})` : ''}
                 </option>
               ))}
             </select>
@@ -1218,10 +1307,13 @@ function ReportsBranch({ onBack }) {
 // ════════════════════════════════════════════════════════════════════════════════
 const DISBURSE_FLOW = ['Processing', 'Disbursed'];
 
-function TransactionsBranch({ onBack }) {
+function TransactionsBranch({ onBack, userProfile }) {
   const { showToast } = useGIS();
   const [allProjects, setAllProjects] = useState(loadProjects);
-  const [selectedProjId, setSelectedProjId] = useState(() => loadProjects()[0]?.project_id || '');
+  const [scopeFilter, setScopeFilter] = useState('my'); // 'my' | 'all'
+  const myProjects = useMemo(() => allProjects.filter((p) => isProjectOwnedByUser(p, userProfile)), [allProjects, userProfile]);
+  const scopedProjects = scopeFilter === 'my' && myProjects.length > 0 ? myProjects : allProjects;
+  const [selectedProjId, setSelectedProjId] = useState(() => (myProjects[0] || loadProjects()[0])?.project_id || '');
   const [disburse, setDisburse] = useState(loadDisburse);
   const [allTasks, setAllTasks] = useState(loadTasks);
 
@@ -1233,13 +1325,15 @@ function TransactionsBranch({ onBack }) {
     ]);
     if (pList) {
       setAllProjects(pList);
-      if (!selectedProjId && pList.length > 0) {
-        setSelectedProjId(pList[0].project_id);
+      const currentMy = pList.filter((p) => isProjectOwnedByUser(p, userProfile));
+      const currentScoped = scopeFilter === 'my' && currentMy.length > 0 ? currentMy : pList;
+      if ((!selectedProjId || !currentScoped.some((p) => p.project_id === selectedProjId)) && currentScoped.length > 0) {
+        setSelectedProjId(currentScoped[0].project_id);
       }
     }
     if (tList) setAllTasks(tList);
     if (dMap) setDisburse(dMap);
-  }, [selectedProjId]);
+  }, [selectedProjId, scopeFilter, userProfile]);
 
   React.useEffect(() => {
     refreshTransactions();
@@ -1285,17 +1379,48 @@ function TransactionsBranch({ onBack }) {
       <BranchHeader title="Beneficiary Transaction Status" subtitle="Award amounts & disbursement audit" icon={CreditCard} onBack={onBack} accentColor="#fb923c" />
 
       <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ background: '#060a14' }}>
-        {/* Project selector */}
-        <div className="flex items-center gap-3">
+        {/* Project selector & Scope toggle row */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Scope Toggle */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setScopeFilter('my');
+                if (myProjects.length > 0 && !myProjects.some((p) => p.project_id === selectedProjId)) {
+                  setSelectedProjId(myProjects[0].project_id);
+                }
+              }}
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                scopeFilter === 'my'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>👤</span> My Projects ({myProjects.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setScopeFilter('all')}
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                scopeFilter === 'all'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🏢</span> All ({allProjects.length})
+            </button>
+          </div>
+
           <select
             value={selectedProjId}
             onChange={(e) => setSelectedProjId(e.target.value)}
             className="px-3 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white outline-none cursor-pointer"
           >
-            {allProjects.length === 0 && <option value="">No projects yet</option>}
-            {allProjects.map((p) => (
+            {scopedProjects.length === 0 && <option value="">No projects found</option>}
+            {scopedProjects.map((p) => (
               <option key={p.project_id} value={p.project_id} style={{ background: '#1e293b' }}>
-                {p.project_id} — {p.project_name}
+                {p.project_id} — {p.project_name} {p.created_by_name ? `(${p.created_by_name})` : ''}
               </option>
             ))}
           </select>
@@ -1404,8 +1529,8 @@ export default function MunicipalOfficerLayout() {
   const [branch, setBranch] = useState(null); // null = hub, 'gis' | 'reports' | 'transactions'
 
   if (branch === 'gis')          return <GISBranch onBack={() => setBranch(null)} userProfile={userProfile} />;
-  if (branch === 'reports')      return <ReportsBranch onBack={() => setBranch(null)} />;
-  if (branch === 'transactions') return <TransactionsBranch onBack={() => setBranch(null)} />;
+  if (branch === 'reports')      return <ReportsBranch onBack={() => setBranch(null)} userProfile={userProfile} />;
+  if (branch === 'transactions') return <TransactionsBranch onBack={() => setBranch(null)} userProfile={userProfile} />;
 
   return <CommandHub onBranch={setBranch} userProfile={userProfile} />;
 }
