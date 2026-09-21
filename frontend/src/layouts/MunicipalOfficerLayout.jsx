@@ -444,24 +444,22 @@ function CommandHub({ onBranch, userProfile }) {
           </div>
         </div>
 
-        {/* Quick stats strip */}
-        <div className="grid grid-cols-4 gap-3 mb-10">
-          {[
-            { label: scopeFilter === 'my' ? 'My Projects' : 'Total Projects', val: stats.projects, color: '#10b981', Icon: FolderOpen },
-            { label: 'Scoped Plots', val: stats.totalPlots, color: '#38bdf8', Icon: MapPin },
-            { label: 'Pending Survey', val: stats.pending, color: '#fbbf24', Icon: Clock },
-            { label: 'Completed', val: stats.completed, color: '#34d399', Icon: CheckCircle2 },
-          ].map(({ label, val, color, Icon }) => (
-            <div
-              key={label}
-              className="p-4 rounded-2xl border"
-              style={{ background: 'rgba(15,23,42,0.8)', border: `1px solid rgba(100,116,139,.18)` }}
-            >
-              <Icon className="w-4 h-4 mb-2" style={{ color }} />
-              <div className="text-2xl font-black" style={{ color }}>{val}</div>
-              <div className="text-[11px] text-slate-500 font-medium mt-0.5">{label}</div>
+        {/* Quick stats strip - Only My Projects */}
+        <div className="mb-8 max-w-xs">
+          <div
+            className="p-4 rounded-2xl border flex items-center gap-4 shadow-sm"
+            style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(16,185,129,.25)' }}
+          >
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <FolderOpen className="w-6 h-6" />
             </div>
-          ))}
+            <div>
+              <div className="text-2xl font-black text-emerald-400">{stats.projects}</div>
+              <div className="text-xs text-slate-400 font-medium">
+                {scopeFilter === 'my' ? 'My Projects' : 'Total Projects'}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 3 Action cards */}
