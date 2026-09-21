@@ -172,6 +172,26 @@ export const dataService = {
     return updated;
   },
 
+  async deleteProject(projectId) {
+    const list = loadRaw(LS_PROJECTS_KEY, []);
+    const updatedProjects = list.filter((p) => (p.project_id || p.projectId) !== projectId);
+    saveRaw(LS_PROJECTS_KEY, updatedProjects);
+
+    const tasks = loadRaw(LS_TASKS_KEY, []);
+    const updatedTasks = tasks.filter((t) => t.projectId !== projectId);
+    saveRaw(LS_TASKS_KEY, updatedTasks);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('survey_tasks').delete().eq('project_id', projectId);
+        await supabase.from('projects').delete().eq('project_id', projectId);
+      } catch (e) {
+        console.warn('[DataService] Supabase deleteProject error:', e);
+      }
+    }
+    return { projects: updatedProjects, tasks: updatedTasks };
+  },
+
   // TASKS
   async getTasks() {
     if (isSupabaseConfigured) {

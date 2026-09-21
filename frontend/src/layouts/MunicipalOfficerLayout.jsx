@@ -4,7 +4,7 @@ import {
   MapPin, Navigation, FileText, Download, CheckCircle2, Clock, Banknote,
   Search, ChevronDown, Building2, Trees, Home, Eye, BarChart3, FolderOpen,
   Sparkles, TrendingUp, Users, Activity, ThumbsUp, ThumbsDown, RotateCcw, XCircle,
-  X, ExternalLink, Image as ImageIcon, FileCheck
+  X, ExternalLink, Image as ImageIcon, FileCheck, Trash2
 } from 'lucide-react';
 import MapContainer from '../components/MapContainer';
 import Sidebar from '../components/Sidebar';
@@ -301,9 +301,12 @@ function DocumentViewerModal({ doc, onClose }) {
 // COMMAND HUB — default landing
 // ════════════════════════════════════════════════════════════════════════════════
 function CommandHub({ onBranch, userProfile }) {
+  const { showToast } = useGIS();
   const [allProjects, setAllProjects] = useState(loadProjects);
   const [allTasks, setAllTasks] = useState(loadTasks);
   const [scopeFilter, setScopeFilter] = useState('my'); // 'my' | 'all'
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const refreshHub = useCallback(async () => {
     const [pList, tList] = await Promise.all([
@@ -331,6 +334,22 @@ function CommandHub({ onBranch, userProfile }) {
     totalPlots: scopedTasks.length,
     pending: scopedTasks.filter((t) => t.status === 'Pending').length,
     completed: scopedTasks.filter((t) => t.status === 'Completed').length,
+  };
+
+  const handleDeleteProject = async (p) => {
+    if (!p) return;
+    setIsDeleting(true);
+    const pid = p.project_id || p.projectId;
+    
+    // 0ms Optimistic in-memory update
+    setAllProjects((prev) => prev.filter((proj) => (proj.project_id || proj.projectId) !== pid));
+    setAllTasks((prev) => prev.filter((t) => t.projectId !== pid));
+    setProjectToDelete(null);
+    setIsDeleting(false);
+    showToast(`🗑️ Project ${pid} ("${p.project_name}") deleted from database.`, 'info');
+
+    // Background cloud deletion
+    await dataService.deleteProject(pid);
   };
 
   const HUB_CARDS = [
@@ -446,7 +465,7 @@ function CommandHub({ onBranch, userProfile }) {
         </div>
 
         {/* 3 Action cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
           {HUB_CARDS.map((card) => (
             <button
               key={card.id}
@@ -475,7 +494,178 @@ function CommandHub({ onBranch, userProfile }) {
             </button>
           ))}
         </div>
+
+        {/* ── Scoped Project Tiles Portfolio ── */}
+        <div className="space-y-4 pt-4 border-t border-slate-800/80">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-emerald-400" />
+                {scopeFilter === 'my' ? 'My Projects Portfolio' : 'All Department Projects Registry'}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {scopeFilter === 'my'
+                  ? 'Infrastructure corridor projects created and managed by your account'
+                  : 'All land acquisition projects across all municipal officers'}
+              </p>
+            </div>
+            <span className="text-xs font-mono text-slate-300 bg-slate-900 px-3 py-1 rounded-xl border border-slate-800 font-semibold">
+              {scopedProjects.length} Project{scopedProjects.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {scopedProjects.length === 0 ? (
+            <div className="p-10 rounded-2xl border border-slate-800/80 bg-slate-900/40 text-center text-slate-400">
+              <FolderOpen className="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-60" />
+              <p className="text-sm font-semibold text-slate-200">No projects found in this view</p>
+              <p className="text-xs text-slate-500 mt-1">Click "Create New Project" above to launch the GIS corridor builder.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {scopedProjects.map((p) => {
+                const pTasks = allTasks.filter((t) => t.projectId === p.project_id);
+                const approvedCount = pTasks.filter((t) => t.officerStatus === 'Approved').length;
+                const underReviewCount = pTasks.filter((t) => t.officerStatus === 'Under Review').length;
+                const completedCount = pTasks.filter((t) => t.status === 'Completed').length;
+                const statusColor = p.status === 'APPROVED' ? '#34d399' : p.status === 'UNDER_REVIEW' ? '#fb923c' : '#fbbf24';
+
+                return (
+                  <div
+                    key={p.project_id}
+                    className="p-5 rounded-2xl border bg-slate-900/70 border-slate-800/80 hover:border-slate-700 transition-all flex flex-col justify-between shadow-lg"
+                  >
+                    <div>
+                      {/* Tile Header: ID, Status, Delete */}
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-500/30">
+                            {p.project_id}
+                          </span>
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                            style={{
+                              background: `${statusColor}18`,
+                              color: statusColor,
+                              border: `1px solid ${statusColor}40`,
+                            }}
+                          >
+                            {p.status || 'PENDING'}
+                          </span>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => setProjectToDelete(p)}
+                          title="Delete Project from Database"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Project Name */}
+                      <h3 className="text-sm font-bold text-white mb-2 leading-snug">{p.project_name}</h3>
+
+                      {/* Meta Info */}
+                      <div className="text-[11px] text-slate-400 space-y-1 mb-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Created by:</span>
+                          <span className="text-slate-200 font-medium truncate max-w-[200px]">{p.created_by_name || p.created_by || 'Municipal Officer'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Date:</span>
+                          <span className="font-mono text-slate-300">
+                            {new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Mini Stats Summary */}
+                      <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 mb-3 text-center">
+                        <div>
+                          <div className="text-[9px] text-slate-500 uppercase font-bold">Plots</div>
+                          <div className="text-xs font-bold text-sky-400 font-mono">{pTasks.length}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] text-slate-500 uppercase font-bold">Surveyed</div>
+                          <div className="text-xs font-bold text-amber-400 font-mono">{completedCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] text-slate-500 uppercase font-bold">Approved</div>
+                          <div className="text-xs font-bold text-emerald-400 font-mono">{approvedCount}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick navigation actions */}
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-800/60">
+                      <button
+                        type="button"
+                        onClick={() => onBranch('reports')}
+                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-[11px] font-semibold text-center border border-sky-500/30 transition-all cursor-pointer"
+                      >
+                        Surveyor Reports →
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onBranch('transactions')}
+                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-300 text-[11px] font-semibold text-center border border-orange-500/30 transition-all cursor-pointer"
+                      >
+                        Financials →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md p-6 rounded-2xl border border-red-500/30 bg-slate-900 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-xl">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Project</h3>
+                <p className="text-xs text-slate-400">Permanent database deletion</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-white">"{projectToDelete.project_name}"</strong> (<span className="font-mono text-sky-300">{projectToDelete.project_id}</span>)?
+            </p>
+            <p className="text-[11px] text-red-300/80 bg-red-950/40 p-2.5 rounded-xl border border-red-500/20">
+              ⚠️ This will delete the project record and all associated survey plot tasks and documents from the Supabase database.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteProject(projectToDelete)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {isDeleting ? 'Deleting…' : 'Delete Project'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
