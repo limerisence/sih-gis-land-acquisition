@@ -143,9 +143,21 @@ async function enrichAddresses(plots) {
   }
 }
 
-// ─── Client-side Overpass fetch with multi-mirror failover ──────────────────
+// ─── Bbox-keyed result cache — prevents re-querying Overpass for the same area ─
+const overpassCache = new Map();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// ─── Client-side Overpass fetch with caching, 429 detection, multi-mirror failover ─
 async function fetchOverpassPolygons(south, west, north, east) {
-  const query = `[out:json][timeout:20];
+  // Round bbox to ~110m grid to maximise cache hits for nearby corridors
+  const cacheKey = [south, west, north, east].map((v) => Number(v).toFixed(3)).join(',');
+  const cached = overpassCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    console.log(`[Overpass] Cache hit for bbox ${cacheKey} (${cached.data.length} features)`);
+    return cached.data;
+  }
+
+  const query = `[out:json][timeout:25];
 (
   way["building"](${south},${west},${north},${east});
   way["landuse"](${south},${west},${north},${east});
@@ -153,10 +165,12 @@ async function fetchOverpassPolygons(south, west, north, east) {
 );
 out geom 500;`;
 
+  let wasRateLimited = false;
+
   for (const url of OVERPASS_MIRRORS) {
     try {
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 8000);
+      const tid = setTimeout(() => controller.abort(), 12000);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -164,23 +178,42 @@ out geom 500;`;
         signal: controller.signal,
       });
       clearTimeout(tid);
-      if (!res.ok) continue;
+
+      if (res.status === 429 || res.status === 503) {
+        console.warn(`[Overpass] Rate limited (${res.status}) by ${url} — trying next mirror`);
+        wasRateLimited = true;
+        continue;
+      }
+      if (!res.ok) {
+        console.warn(`[Overpass] HTTP ${res.status} from ${url}`);
+        continue;
+      }
+
       const osmJson = await res.json();
-      if (!osmJson.elements?.length) continue;
+      if (!osmJson.elements?.length) {
+        console.warn(`[Overpass] 0 elements from ${url}`);
+        continue;
+      }
+
       const geojson = osmtogeojson(osmJson);
       const polygons = (geojson.features || []).filter(
         (f) => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')
       );
       if (polygons.length > 0) {
         console.log(`[Overpass] OK ${polygons.length} features from ${url}`);
+        // Store in cache
+        overpassCache.set(cacheKey, { data: polygons, ts: Date.now() });
         return polygons;
       }
     } catch (err) {
       console.warn(`[Overpass] FAIL ${url}:`, err.message);
     }
   }
-  return null;
+
+  // Return a special signal so the caller can show the right message
+  return wasRateLimited ? 'rate_limited' : null;
 }
+
 
 // ─── Exported helpers ────────────────────────────────────────────────────────
 export const isBuilding = (f) => Boolean(f?.properties?.buildingType);
@@ -302,11 +335,17 @@ export function GISProvider({ children }) {
       setLoadingStage('Querying OpenStreetMap (Overpass API)…');
       const rawPolygons = await fetchOverpassPolygons(south, west, north, east);
 
-      if (!rawPolygons || rawPolygons.length === 0) {
+      if (rawPolygons === 'rate_limited') {
         setDataSource('unavailable');
-        showToast('⚠ Overpass API unavailable — please retry in a moment.', 'error');
+        showToast('⏳ Overpass API rate-limited — wait ~30 seconds then retry. Your corridor is saved.', 'error');
         return;
       }
+      if (!rawPolygons || rawPolygons.length === 0) {
+        setDataSource('unavailable');
+        showToast('⚠ Overpass API unavailable — all mirrors timed out. Please retry in a moment.', 'error');
+        return;
+      }
+
 
       setLoadingStage('Enriching OSM plot metadata…');
       const enriched = enrichOsmFeatures(rawPolygons);
