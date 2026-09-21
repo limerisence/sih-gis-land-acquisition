@@ -86,15 +86,7 @@ function AppContent() {
             </div>
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-white">BhoomiAcquire GIS</h1>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                SIH 2024
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              West Bengal Multi-Point Land Acquisition Engine · Overpass API
-            </p>
+            <h1 className="text-base font-bold text-white tracking-tight">Bhoomi Setu</h1>
           </div>
         </div>
 

@@ -150,7 +150,7 @@ export default function PortalGateModal() {
               </div>
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-black text-white tracking-tight">BhoomiAcquire GIS</h1>
+              <h1 className="text-2xl font-black text-white tracking-tight">Bhoomi Setu</h1>
               <p className="text-xs text-slate-400 font-medium">West Bengal Land Acquisition Intelligence Platform · SIH 2026</p>
             </div>
           </div>
