@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Home, Trees, Eye, MapPin, ExternalLink, Navigation } from 'lucide-react';
+import { Building2, Home, Trees, Eye, MapPin, ExternalLink, Navigation, Clock } from 'lucide-react';
 import * as turf from '@turf/turf';
 import { isLandPlot, useGIS } from '../context/GISContext';
 
@@ -47,7 +47,8 @@ export default function FeatureItemCard({ feature }) {
   const CategoryIcon = ({ cat }) => {
     if (cat === 'Commercial') return <Building2 className="w-3 h-3 shrink-0" />;
     if (cat === 'Agricultural') return <Trees className="w-3 h-3 shrink-0" />;
-    return <Home className="w-3 h-3 shrink-0" />;
+    if (cat === 'Residential') return <Home className="w-3 h-3 shrink-0" />;
+    return <Clock className="w-3 h-3 shrink-0 text-amber-400" />;
   };
 
   return (
@@ -73,7 +74,7 @@ export default function FeatureItemCard({ feature }) {
               {p.plotId}
             </span>
             <span className="text-[10px] text-slate-400 font-mono">
-              {p.khasraNo || 'N/A'}
+              {p.khasraNo || 'Record Pending'}
             </span>
             <span
               className="text-[10px] px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
@@ -83,17 +84,21 @@ export default function FeatureItemCard({ feature }) {
                     ? 'rgba(168,85,247,.18)'
                     : p.landCategory === 'Agricultural'
                       ? 'rgba(245,158,11,.18)'
-                      : 'rgba(59,130,246,.18)',
+                      : p.landCategory === 'Residential'
+                        ? 'rgba(59,130,246,.18)'
+                        : 'rgba(245,158,11,.15)',
                 color:
                   p.landCategory === 'Commercial'
                     ? '#c084fc'
                     : p.landCategory === 'Agricultural'
                       ? '#fbbf24'
-                      : '#93c5fd'
+                      : p.landCategory === 'Residential'
+                        ? '#93c5fd'
+                        : '#fcd34d'
               }}
             >
               <CategoryIcon cat={p.landCategory} />
-              {p.landCategory || 'Residential'}
+              {p.landCategory || 'Pending Survey'}
             </span>
             {!isPlot && (
               <span

@@ -25,37 +25,14 @@ function enrichOsmFeatures(features) {
   return features.map((feature, index) => {
     const rawTags = { ...(feature.properties || {}), ...(feature.properties?.tags || {}) };
     const featureId = String(feature.id || `WB-${index + 1}`);
-    const hash = hashString(featureId + (rawTags.name || ''));
 
-    let category = 'Residential';
-    const building = (rawTags.building || '').toLowerCase();
-    const landuse = (rawTags.landuse || '').toLowerCase();
-    const amenity = (rawTags.amenity || '').toLowerCase();
-    const leisure = (rawTags.leisure || '').toLowerCase();
-
-    if (
-      building === 'commercial' || building === 'retail' || building === 'warehouse' ||
-      building === 'office' || building === 'supermarket' || landuse === 'commercial' ||
-      landuse === 'retail' || landuse === 'industrial' || rawTags.shop ||
-      amenity === 'bank' || amenity === 'hospital' || amenity === 'restaurant'
-    ) { category = 'Commercial'; }
-    else if (
-      landuse === 'farmland' || landuse === 'forest' || landuse === 'meadow' ||
-      landuse === 'grass' || landuse === 'orchard' || landuse === 'allotments' || landuse === 'farmyard' ||
-      leisure === 'park' || leisure === 'garden' || leisure === 'pitch'
-    ) { category = 'Agricultural'; }
-    else if (amenity === 'school' || amenity === 'college' || amenity === 'university' || amenity === 'place_of_worship') {
-      category = 'Institutional';
-    }
-
-    let rate = 6500;
-    if (category === 'Commercial') rate = 12000 + (hash % 6000);
-    else if (category === 'Agricultural') rate = 3500 + (hash % 1500);
-    else rate = 5500 + (hash % 3000);
+    // Category is NOT guessed or auto-assigned — surveyor will inspect and verify on-site
+    const category = 'Pending Survey';
+    const rate = 0;
 
     let areaSqM = 0;
     try { areaSqM = Math.round(turf.area(feature)); } catch (_) {}
-    if (areaSqM <= 0) areaSqM = 650 + (hash % 1500);
+    if (areaSqM <= 0) areaSqM = 500;
     const areaSqKm = Number((areaSqM / 1_000_000).toFixed(6));
 
     let centerLat = 22.5726, centerLng = 88.3639;
@@ -65,24 +42,25 @@ function enrichOsmFeatures(features) {
       centerLat = Number(center.geometry.coordinates[1].toFixed(6));
     } catch (_) {}
 
+    // Extract genuine OSM ground address components
     const addressParts = [];
+    if (rawTags.name) addressParts.push(rawTags.name);
+    if (rawTags['addr:housename']) addressParts.push(rawTags['addr:housename']);
     if (rawTags['addr:housenumber']) addressParts.push(`Premises ${rawTags['addr:housenumber']}`);
+    if (rawTags['addr:block']) addressParts.push(rawTags['addr:block']);
     if (rawTags['addr:street']) addressParts.push(rawTags['addr:street']);
+    if (rawTags['addr:neighbourhood']) addressParts.push(rawTags['addr:neighbourhood']);
     if (rawTags['addr:suburb']) addressParts.push(rawTags['addr:suburb']);
     if (rawTags['addr:city']) addressParts.push(rawTags['addr:city']);
     if (rawTags['addr:postcode']) addressParts.push(rawTags['addr:postcode']);
+
     let address = rawTags['addr:full'] || (addressParts.length > 0 ? addressParts.join(', ') : null);
     if (!address) {
-      address = rawTags.name
-        ? `${rawTags.name}, West Bengal (${centerLat.toFixed(4)}°N, ${centerLng.toFixed(4)}°E)`
-        : `Plot at ${centerLat.toFixed(5)}° N, ${centerLng.toFixed(5)}° E, West Bengal`;
+      const locality = rawTags['addr:suburb'] || rawTags['addr:block'] || rawTags['addr:city'] || 'Bidhannagar / Kolkata';
+      address = `${locality} (${centerLat.toFixed(5)}° N, ${centerLng.toFixed(5)}° E)`;
     }
 
-    const ownerName = rawTags.operator || rawTags.name ||
-      (category === 'Commercial' ? 'Commercial Entity (Owner Record Pending)'
-        : category === 'Agricultural' ? 'Agricultural Holding (Owner Record Pending)'
-        : 'Private Parcel (Owner Record Pending)');
-
+    const ownerName = rawTags.operator || rawTags.name || 'Owner Record Pending Survey';
     const khasraNo = rawTags['ref:khasra'] || rawTags['ref:dag'] || rawTags['cadastre:khasra'] || '';
     const plotId = `WB-PL-${featureId.replace(/\D/g, '').slice(-5) || (100 + index)}`;
 
@@ -91,13 +69,18 @@ function enrichOsmFeatures(features) {
       id: plotId,
       geometry: feature.geometry,
       properties: {
-        plotId, ownerName, khasraNo, address,
+        plotId,
+        ownerName,
+        khasraNo,
+        address,
         coordinates: { lat: centerLat, lng: centerLng },
-        landAreaSqM: areaSqM, landAreaSqKm: areaSqKm,
-        landCategory: category, ratePerSqM: rate,
+        landAreaSqM: areaSqM,
+        landAreaSqKm: areaSqKm,
+        landCategory: category,
+        ratePerSqM: rate,
         osmId: featureId,
         name: rawTags.name || undefined,
-        buildingType: rawTags.building || undefined,
+        buildingType: rawTags.building && rawTags.building !== 'no' ? rawTags.building : undefined,
         landuseType: rawTags.landuse || undefined,
       },
     };
@@ -181,13 +164,10 @@ out geom;`;
   for (const url of OVERPASS_MIRRORS) {
     try {
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 14000);
+      const tid = setTimeout(() => controller.abort(), 22000);
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'data=' + encodeURIComponent(query),
         signal: controller.signal,
       });
@@ -215,7 +195,6 @@ out geom;`;
       );
       if (polygons.length > 0) {
         console.log(`[Overpass] OK ${polygons.length} features from ${url}`);
-        // Store in cache
         overpassCache.set(cacheKey, { data: polygons, ts: Date.now() });
         return polygons;
       }
@@ -224,7 +203,30 @@ out geom;`;
     }
   }
 
-  // Return a special signal so the caller can show the right message
+  // GET fallback if browser POST was blocked by security headers
+  try {
+    const getUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 22000);
+    const res = await fetch(getUrl, { signal: controller.signal });
+    clearTimeout(tid);
+    if (res.ok) {
+      const osmJson = await res.json();
+      if (osmJson.elements?.length) {
+        const geojson = osmtogeojson(osmJson);
+        const polygons = (geojson.features || []).filter(
+          (f) => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')
+        );
+        if (polygons.length > 0) {
+          overpassCache.set(cacheKey, { data: polygons, ts: Date.now() });
+          return polygons;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Overpass] GET fallback failed:', err.message);
+  }
+
   return wasRateLimited ? 'rate_limited' : null;
 }
 
@@ -373,10 +375,11 @@ export function GISProvider({ children }) {
         try { if (turf.booleanIntersects(plot, bridgeBuf)) affected.push(plot); } catch (_) {}
       });
 
-      // Resolve real Nominatim street addresses for affected plots (capped at 30)
-      if (affected.length > 0 && affected.length <= 30) {
-        setLoadingStage(`Resolving addresses for ${affected.length} plots via Nominatim…`);
-        await enrichAddresses(affected);
+      // Resolve real ground addresses via Nominatim for the first 25 plots
+      if (affected.length > 0) {
+        const toGeocode = affected.slice(0, 25);
+        setLoadingStage(`Resolving real ground addresses via Nominatim (${toGeocode.length} plots)…`);
+        await enrichAddresses(toGeocode);
       }
 
       const plots = affected.filter(isLandPlot);
