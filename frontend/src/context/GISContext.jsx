@@ -23,23 +23,30 @@ function hashString(str) {
 
 function enrichOsmFeatures(features) {
   return features.map((feature, index) => {
-    const rawTags = feature.properties?.tags || {};
+    const rawTags = { ...(feature.properties || {}), ...(feature.properties?.tags || {}) };
     const featureId = String(feature.id || `WB-${index + 1}`);
     const hash = hashString(featureId + (rawTags.name || ''));
 
     let category = 'Residential';
     const building = (rawTags.building || '').toLowerCase();
     const landuse = (rawTags.landuse || '').toLowerCase();
+    const amenity = (rawTags.amenity || '').toLowerCase();
+    const leisure = (rawTags.leisure || '').toLowerCase();
+
     if (
       building === 'commercial' || building === 'retail' || building === 'warehouse' ||
       building === 'office' || building === 'supermarket' || landuse === 'commercial' ||
       landuse === 'retail' || landuse === 'industrial' || rawTags.shop ||
-      rawTags.amenity === 'bank' || rawTags.amenity === 'hospital'
+      amenity === 'bank' || amenity === 'hospital' || amenity === 'restaurant'
     ) { category = 'Commercial'; }
     else if (
       landuse === 'farmland' || landuse === 'forest' || landuse === 'meadow' ||
-      landuse === 'grass' || landuse === 'orchard' || landuse === 'allotments' || landuse === 'farmyard'
+      landuse === 'grass' || landuse === 'orchard' || landuse === 'allotments' || landuse === 'farmyard' ||
+      leisure === 'park' || leisure === 'garden' || leisure === 'pitch'
     ) { category = 'Agricultural'; }
+    else if (amenity === 'school' || amenity === 'college' || amenity === 'university' || amenity === 'place_of_worship') {
+      category = 'Institutional';
+    }
 
     let rate = 6500;
     if (category === 'Commercial') rate = 12000 + (hash % 6000);
@@ -157,23 +164,30 @@ async function fetchOverpassPolygons(south, west, north, east) {
     return cached.data;
   }
 
-  const query = `[out:json][timeout:25];
+  const query = `[out:json][timeout:30];
 (
   way["building"](${south},${west},${north},${east});
   way["landuse"](${south},${west},${north},${east});
+  way["amenity"](${south},${west},${north},${east});
+  way["leisure"](${south},${west},${north},${east});
   relation["landuse"](${south},${west},${north},${east});
+  relation["building"](${south},${west},${north},${east});
+  relation["amenity"](${south},${west},${north},${east});
 );
-out geom 500;`;
+out geom;`;
 
   let wasRateLimited = false;
 
   for (const url of OVERPASS_MIRRORS) {
     try {
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 12000);
+      const tid = setTimeout(() => controller.abort(), 14000);
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
         body: 'data=' + encodeURIComponent(query),
         signal: controller.signal,
       });
