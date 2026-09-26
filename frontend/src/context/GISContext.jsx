@@ -21,7 +21,7 @@ function hashString(str) {
   return Math.abs(hash);
 }
 
-function enrichOsmFeatures(features) {
+function enrichOsmFeatures(features, localityAnchor = '') {
   return features.map((feature, index) => {
     const rawTags = { ...(feature.properties || {}), ...(feature.properties?.tags || {}) };
     const featureId = String(feature.id || `WB-${index + 1}`);
@@ -56,8 +56,11 @@ function enrichOsmFeatures(features) {
 
     let address = rawTags['addr:full'] || (addressParts.length > 0 ? addressParts.join(', ') : null);
     if (!address) {
-      const locality = rawTags['addr:suburb'] || rawTags['addr:block'] || rawTags['addr:city'] || 'Bidhannagar / Kolkata';
-      address = `${locality} (${centerLat.toFixed(5)}° N, ${centerLng.toFixed(5)}° E)`;
+      if (localityAnchor) {
+        address = `Plot near ${localityAnchor} (${centerLat.toFixed(5)}° N, ${centerLng.toFixed(5)}° E)`;
+      } else {
+        address = `Plot at ${centerLat.toFixed(5)}° N, ${centerLng.toFixed(5)}° E`;
+      }
     }
 
     const ownerName = rawTags.operator || rawTags.name || 'Owner Record Pending Survey';
@@ -89,8 +92,8 @@ function enrichOsmFeatures(features) {
 
 // ─── Nominatim reverse geocode with in-memory cache ─────────────────────────
 const geocodeCache = new Map();
-async function reverseGeocode(lat, lng) {
-  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+export async function reverseGeocode(lat, lng) {
+  const key = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
   if (geocodeCache.has(key)) return geocodeCache.get(key);
   try {
     const res = await fetch(
@@ -116,21 +119,51 @@ async function reverseGeocode(lat, lng) {
   return null;
 }
 
-// Throttled batch geocoder — respects Nominatim's 1 req/sec fair-use policy
-async function enrichAddresses(plots) {
-  const BATCH = 4;
-  for (let i = 0; i < plots.length; i += BATCH) {
-    await Promise.all(
-      plots.slice(i, i + BATCH).map(async (plot) => {
-        const { lat, lng } = plot.properties?.coordinates || {};
-        if (lat && lng) {
-          const addr = await reverseGeocode(lat, lng);
-          if (addr) plot.properties.address = addr;
-        }
-      })
+// Regional corridor anchor geocode — single fast query to discover real district/suburb/PIN
+async function getLocalityAnchor(lat, lng) {
+  const key = `anchor_${Number(lat).toFixed(3)},${Number(lng).toFixed(3)}`;
+  if (geocodeCache.has(key)) return geocodeCache.get(key);
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14&addressdetails=1`,
+      { headers: { 'User-Agent': 'BhoomiSetuGIS/2.0 (Municipal Land Acquisition Platform)' } }
     );
-    if (i + BATCH < plots.length) await new Promise((r) => setTimeout(r, 1100));
+    if (!res.ok) return '';
+    const data = await res.json();
+    const addr = data.address || {};
+    const parts = [];
+    if (addr.suburb || addr.neighbourhood) parts.push(addr.suburb || addr.neighbourhood);
+    if (addr.city || addr.town || addr.state_district) parts.push(addr.city || addr.town || addr.state_district);
+    if (addr.postcode) parts.push(addr.postcode);
+    const result = parts.join(', ');
+    if (result) geocodeCache.set(key, result);
+    return result;
+  } catch (_) {
+    return '';
   }
+}
+
+// Progressive non-blocking background geocoder — updates cards seamlessly without freezing UI
+function enrichAddressesProgressively(plots, onPlotUpdated) {
+  const queue = [...plots];
+  let index = 0;
+
+  async function processNext() {
+    if (index >= queue.length) return;
+    const plot = queue[index++];
+    const { lat, lng } = plot.properties?.coordinates || {};
+    if (lat && lng) {
+      const realAddress = await reverseGeocode(lat, lng);
+      if (realAddress && plot.properties) {
+        plot.properties.address = realAddress;
+        if (onPlotUpdated) onPlotUpdated(plot);
+      }
+    }
+    // Respect 1 req/sec fair-use policy in the background
+    setTimeout(processNext, 1100);
+  }
+
+  processNext();
 }
 
 // ─── Bbox-keyed result cache — prevents re-querying Overpass for the same area ─
@@ -147,24 +180,21 @@ async function fetchOverpassPolygons(south, west, north, east) {
     return cached.data;
   }
 
-  const query = `[out:json][timeout:30];
+  // Fast, lean query matching the smooth Express configuration capped at 500
+  const query = `[out:json][timeout:20];
 (
   way["building"](${south},${west},${north},${east});
   way["landuse"](${south},${west},${north},${east});
-  way["amenity"](${south},${west},${north},${east});
-  way["leisure"](${south},${west},${north},${east});
   relation["landuse"](${south},${west},${north},${east});
-  relation["building"](${south},${west},${north},${east});
-  relation["amenity"](${south},${west},${north},${east});
 );
-out geom;`;
+out geom 500;`;
 
   let wasRateLimited = false;
 
   for (const url of OVERPASS_MIRRORS) {
     try {
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 22000);
+      const tid = setTimeout(() => controller.abort(), 12000);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -207,7 +237,7 @@ out geom;`;
   try {
     const getUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
     const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 22000);
+    const tid = setTimeout(() => controller.abort(), 12000);
     const res = await fetch(getUrl, { signal: controller.signal });
     clearTimeout(tid);
     if (res.ok) {
@@ -348,8 +378,14 @@ export function GISProvider({ children }) {
       const bbox = turf.bbox(turf.buffer(line, paddingKm, { units: 'kilometers' }));
       const [west, south, east, north] = [bbox[0].toFixed(5), bbox[1].toFixed(5), bbox[2].toFixed(5), bbox[3].toFixed(5)];
 
-      setLoadingStage('Querying OpenStreetMap (Overpass API)…');
-      const rawPolygons = await fetchOverpassPolygons(south, west, north, east);
+      setLoadingStage('Querying OpenStreetMap cadastre & buildings…');
+
+      // Parallelize regional locality anchor and Overpass vector polygons
+      const midPt = pts[Math.floor(pts.length / 2)];
+      const [localityAnchor, rawPolygons] = await Promise.all([
+        getLocalityAnchor(midPt.lat, midPt.lng),
+        fetchOverpassPolygons(south, west, north, east)
+      ]);
 
       if (rawPolygons === 'rate_limited') {
         setDataSource('unavailable');
@@ -362,25 +398,16 @@ export function GISProvider({ children }) {
         return;
       }
 
-
-      setLoadingStage('Enriching OSM plot metadata…');
-      const enriched = enrichOsmFeatures(rawPolygons);
+      setLoadingStage('Computing corridor intersections…');
+      const enriched = enrichOsmFeatures(rawPolygons, localityAnchor);
       setAllFeatures(enriched);
       setLandVersion((v) => v + 1);
       setBuildingVersion((v) => v + 1);
 
-      setLoadingStage('Computing corridor intersections…');
       const affected = [];
       enriched.forEach((plot) => {
         try { if (turf.booleanIntersects(plot, bridgeBuf)) affected.push(plot); } catch (_) {}
       });
-
-      // Resolve real ground addresses via Nominatim for the first 25 plots
-      if (affected.length > 0) {
-        const toGeocode = affected.slice(0, 25);
-        setLoadingStage(`Resolving real ground addresses via Nominatim (${toGeocode.length} plots)…`);
-        await enrichAddresses(toGeocode);
-      }
 
       const plots = affected.filter(isLandPlot);
       const buildings = affected.filter(isBuilding);
@@ -389,16 +416,39 @@ export function GISProvider({ children }) {
         (acc, p) => acc + (p.properties.landAreaSqM || 0) * (p.properties.ratePerSqM || 0), 0
       );
 
+      // Instant UI presentation (< 1.5 seconds total)
       setAffectedPlots(plots);
       setAffectedBuildings(buildings);
-      setSummary({ totalPlots: affected.length, totalAreaSqM, totalAreaSqKm: Number((totalAreaSqM / 1_000_000).toFixed(5)), totalEstimatedCost, totalLengthKm, totalLengthMeters });
+      setSummary({
+        totalPlots: affected.length,
+        totalAreaSqM,
+        totalAreaSqKm: Number((totalAreaSqM / 1_000_000).toFixed(5)),
+        totalEstimatedCost,
+        totalLengthKm,
+        totalLengthMeters
+      });
       setIsCalculated(true);
       setDataSource('overpass');
+      setIsLoading(false);
+      setLoadingStage('');
 
       showToast(
         `Live OSM: ${plots.length} land plots · ${buildings.length} buildings along ${totalLengthKm} km alignment`,
         affected.length > 0 ? 'success' : 'info'
       );
+
+      // Progressive non-blocking background geocoder for door-level address precision
+      if (affected.length > 0) {
+        enrichAddressesProgressively(affected.slice(0, 30), (updatedPlot) => {
+          const pid = updatedPlot.properties?.plotId;
+          setAffectedPlots((prev) =>
+            prev.map((p) => (p.properties?.plotId === pid ? { ...updatedPlot } : p))
+          );
+          setAffectedBuildings((prev) =>
+            prev.map((p) => (p.properties?.plotId === pid ? { ...updatedPlot } : p))
+          );
+        });
+      }
     } catch (err) {
       console.error('[runAnalysis]', err);
       showToast(`Analysis Error: ${err.message}`, 'error');
@@ -424,7 +474,28 @@ export function GISProvider({ children }) {
     showToast('Map & corridor alignment reset to initial state.', 'info');
   }, [showToast]);
 
-  const inspectFeature = useCallback((feature, kind) => { setSelectedFeature({ feature, kind }); setIsModalOpen(true); }, []);
+  const inspectFeature = useCallback(async (feature, kind) => {
+    setSelectedFeature({ feature, kind });
+    setIsModalOpen(true);
+    // On-demand instant reverse geocode if address not yet door-level resolved
+    const p = feature?.properties;
+    const { lat, lng } = p?.coordinates || {};
+    if (lat && lng && (!p?.address || p.address.startsWith('Plot at') || p.address.startsWith('Plot near'))) {
+      try {
+        const exactAddr = await reverseGeocode(lat, lng);
+        if (exactAddr && feature.properties) {
+          feature.properties.address = exactAddr;
+          setSelectedFeature({ feature: { ...feature }, kind });
+          setAffectedPlots((prev) =>
+            prev.map((item) => (item.properties?.plotId === p.plotId ? { ...feature } : item))
+          );
+          setAffectedBuildings((prev) =>
+            prev.map((item) => (item.properties?.plotId === p.plotId ? { ...feature } : item))
+          );
+        }
+      } catch (_) {}
+    }
+  }, []);
 
   const focusOnFeature = useCallback((feature, kind, zoom = 17) => {
     setSelectedFeature({ feature, kind });
