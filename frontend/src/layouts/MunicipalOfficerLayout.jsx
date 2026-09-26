@@ -34,7 +34,7 @@ function genProjectId() {
   return `PRJ-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
-export function isProjectOwnedByUser(project, userProfile) {
+function isProjectOwnedByUser(project, userProfile) {
   if (!project) return false;
   if (!userProfile) return true;
   const userEmail = userProfile.email?.toLowerCase().trim();
