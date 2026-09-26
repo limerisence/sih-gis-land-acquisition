@@ -124,7 +124,6 @@ export default function PortalGateModal() {
             </div>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Bhoomi Setu</h1>
-              <p className="text-xs text-slate-500 font-medium">West Bengal Land Acquisition & Statutory Disbursement System</p>
             </div>
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 mt-1">
