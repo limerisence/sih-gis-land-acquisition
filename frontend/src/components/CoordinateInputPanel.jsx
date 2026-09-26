@@ -112,15 +112,15 @@ export default function CoordinateInputPanel() {
   };
 
   return (
-    <div className="p-4 space-y-3.5 shrink-0 border-b border-slate-800">
+    <div className="p-4 space-y-3.5 shrink-0 border-b border-slate-100 bg-white">
       {/* Panel header with point counter & quick tools */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="text-xs font-bold text-white uppercase tracking-wider">
+          <MapPin className="w-3.5 h-3.5 text-blue-600" />
+          <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
             Alignment Vertices
           </span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
             {points.length} {points.length === 1 ? 'Point' : 'Points'}
           </span>
         </div>
@@ -131,7 +131,7 @@ export default function CoordinateInputPanel() {
             title="Remove Last Point"
             disabled={points.length === 0}
             onClick={removeLastPoint}
-            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-40 transition-colors cursor-pointer text-xs"
+            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 disabled:opacity-40 transition-colors cursor-pointer text-xs border border-slate-200"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -139,7 +139,7 @@ export default function CoordinateInputPanel() {
             type="button"
             title="Paste Coordinates"
             onClick={() => setIsPasteOpen((prev) => !prev)}
-            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer text-xs"
+            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer text-xs border border-slate-200"
           >
             <ClipboardPaste className="w-3.5 h-3.5" />
           </button>
@@ -148,7 +148,7 @@ export default function CoordinateInputPanel() {
             title="Clear All Points"
             disabled={points.length === 0}
             onClick={clearPoints}
-            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-40 transition-colors cursor-pointer text-xs"
+            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 disabled:opacity-40 transition-colors cursor-pointer text-xs border border-slate-200"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -157,39 +157,39 @@ export default function CoordinateInputPanel() {
 
       {/* Paste Coordinates drawer */}
       {isPasteOpen && (
-        <div className="p-3 rounded-xl border border-slate-700 bg-slate-950/80 space-y-2 text-xs">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+        <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
             <span>Paste Coordinate Array</span>
             <button
               type="button"
               onClick={() => setIsPasteOpen(false)}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-slate-700"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-[10px] text-slate-400">
-            Accepts JSON (e.g. <code className="text-emerald-400">[[22.568, 88.359], [22.571, 88.365]]</code>) or comma-separated pairs.
+          <p className="text-[11px] text-slate-500">
+            Accepts JSON (e.g. <code className="text-blue-600 font-mono">[[22.568, 88.359], [22.571, 88.365]]</code>) or comma-separated pairs.
           </p>
           <textarea
             rows={3}
             placeholder="[[22.5685, 88.3595], [22.5718, 88.3655], [22.5752, 88.3725]]"
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
-            className="w-full p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+            className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 resize-none"
           />
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setIsPasteOpen(false)}
-              className="px-2.5 py-1 rounded-md text-[11px] bg-slate-800 text-slate-400 hover:text-white"
+              className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 bg-white hover:bg-slate-100 border border-slate-200"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handlePasteSubmit}
-              className="px-3 py-1 rounded-md text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+              className="px-3 py-1 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
             >
               Load Points
             </button>
@@ -199,29 +199,29 @@ export default function CoordinateInputPanel() {
 
       {/* Interactive Points List */}
       {points.length === 0 ? (
-        <div className="p-3 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-400 bg-slate-950/30">
-          <MapPin className="w-5 h-5 text-emerald-500/60 mx-auto mb-1" />
-          Click anywhere on map to add vertex <span className="text-emerald-400 font-semibold">P1</span>, or enter manual coordinates below.
+        <div className="p-3.5 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500 bg-slate-50/70">
+          <MapPin className="w-5 h-5 text-blue-500/80 mx-auto mb-1.5" />
+          Click anywhere on map to add vertex <span className="text-blue-600 font-semibold">P1</span>, or enter manual coordinates below.
         </div>
       ) : (
         <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
           {points.map((pt, idx) => (
             <div
               key={`${pt.lat}-${pt.lng}-${idx}`}
-              className="flex items-center justify-between p-1.5 px-2.5 rounded-lg border border-slate-800 bg-slate-900 text-xs"
+              className="flex items-center justify-between p-2 px-2.5 rounded-lg border border-slate-200 bg-slate-50/80 text-xs"
             >
               <div className="flex items-center gap-2 font-mono">
-                <span className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white bg-emerald-600">
+                <span className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] text-white bg-blue-600">
                   P{idx + 1}
                 </span>
-                <span className="text-slate-300 text-[11px]">
+                <span className="text-slate-700 text-[11px]">
                   {pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => removePoint(idx)}
-                className="text-slate-500 hover:text-red-400 transition-colors p-0.5"
+                className="text-slate-400 hover:text-rose-600 transition-colors p-0.5 cursor-pointer"
                 title="Delete this point"
               >
                 <X className="w-3.5 h-3.5" />
@@ -235,7 +235,7 @@ export default function CoordinateInputPanel() {
       <form onSubmit={handleAddManualPoint} className="space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+            <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
               Latitude
             </label>
             <input
@@ -243,11 +243,11 @@ export default function CoordinateInputPanel() {
               placeholder="e.g. 22.5685"
               value={manualLat}
               onChange={(e) => setManualLat(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
             />
           </div>
           <div>
-            <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+            <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
               Longitude
             </label>
             <input
@@ -255,26 +255,25 @@ export default function CoordinateInputPanel() {
               placeholder="e.g. 88.3595"
               value={manualLng}
               onChange={(e) => setManualLng(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
             />
           </div>
         </div>
 
-        {/* Button right below the lat and long input spaces */}
         <button
           type="submit"
-          className="w-full py-2 px-3 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-950/40 active:scale-[0.98]"
+          className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
         >
-          <MapPin className="w-3.5 h-3.5" />
+          <MapPin className="w-3.5 h-3.5 text-slate-600" />
           <span>Add Pin to Map</span>
         </button>
       </form>
 
       {/* Buffer width slider & presets */}
-      <div>
-        <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
+      <div className="pt-1">
+        <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
           <span>Corridor Buffer Width</span>
-          <span className="text-emerald-400 font-mono font-bold">{bufferWidthMeters} m</span>
+          <span className="text-blue-600 font-mono font-bold">{bufferWidthMeters} m</span>
         </div>
         <div className="flex gap-2">
           <input
@@ -283,23 +282,22 @@ export default function CoordinateInputPanel() {
             max="500"
             value={bufferWidthMeters}
             onChange={(e) => setBufferWidthMeters(Number(e.target.value))}
-            className="flex-1 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
           />
-          <span className="text-xs text-slate-400 self-center font-medium">Meters</span>
+          <span className="text-xs text-slate-500 self-center font-medium">Meters</span>
         </div>
         <div className="flex items-center gap-1.5 mt-2">
-          <span className="text-[10px] text-slate-400 uppercase font-semibold">Presets:</span>
+          <span className="text-[10px] text-slate-500 uppercase font-semibold">Presets:</span>
           {[15, 20, 30, 50, 100].map((w) => (
             <button
               key={w}
               type="button"
               onClick={() => setBufferWidthMeters(w)}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
                 bufferWidthMeters === w
-                  ? 'text-emerald-300 border border-emerald-500/50'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
               }`}
-              style={bufferWidthMeters === w ? { background: 'rgba(16,185,129,.15)' } : {}}
             >
               {w}m
             </button>
@@ -312,16 +310,11 @@ export default function CoordinateInputPanel() {
         type="button"
         onClick={() => runAnalysis()}
         disabled={isLoading || points.length < 2}
-        className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-950/40"
-        style={{
-          background: isLoading
-            ? '#0f766e'
-            : 'linear-gradient(to right, #059669, #0d9488, #0891b2)'
-        }}
+        className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-white flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 shadow-sm"
       >
         {isLoading ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
             <span className="truncate">{loadingStage || 'Processing…'}</span>
           </>
         ) : (

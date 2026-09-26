@@ -9,6 +9,7 @@ import MapContainer from '../components/MapContainer';
 import { useGIS } from '../context/GISContext';
 import { useAuth } from '../context/AuthContext';
 import { dataService } from '../services/dataService';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
 // ─── localStorage + Supabase helpers ─────────────────────────────────────────
 const LS_TASKS_KEY    = 'bhoomi_survey_tasks';
@@ -24,27 +25,24 @@ const saveProjects = (p) => { saveRaw(LS_PROJECTS_KEY, p); dataService.saveProje
 const LAND_CLASSES = ['Residential', 'Commercial', 'Agricultural', 'Industrial', 'Mixed Use'];
 
 const STATUS_STYLE = {
-  Pending:       { color: '#fbbf24', bg: 'rgba(251,191,36,.15)',  border: 'rgba(251,191,36,.3)'  },
-  'In Progress': { color: '#38bdf8', bg: 'rgba(56,189,248,.15)', border: 'rgba(56,189,248,.3)'  },
-  Completed:     { color: '#34d399', bg: 'rgba(52,211,153,.15)', border: 'rgba(52,211,153,.3)'  },
+  Pending:       { label: 'Pending',     className: 'bg-amber-50 text-amber-700 border border-amber-200/60' },
+  'In Progress': { label: 'In Progress', className: 'bg-blue-50 text-blue-700 border border-blue-200/60' },
+  Completed:     { label: 'Completed',   className: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' },
 };
 
 const PROJECT_STATUS_STYLE = {
-  PENDING:       { label: '🟡 IN PROGRESS',  color: '#fbbf24', bg: 'rgba(251,191,36,.12)',  border: 'rgba(251,191,36,.3)'  },
-  IN_PROGRESS:   { label: '🟡 IN PROGRESS',  color: '#fbbf24', bg: 'rgba(251,191,36,.12)',  border: 'rgba(251,191,36,.3)'  },
-  CLOSED:        { label: '🟢 CLOSED',        color: '#34d399', bg: 'rgba(52,211,153,.12)',  border: 'rgba(52,211,153,.3)'  },
-  COMPLETED:     { label: '🟢 CLOSED',        color: '#34d399', bg: 'rgba(52,211,153,.12)',  border: 'rgba(52,211,153,.3)'  },
-  UNDER_REVIEW:  { label: '🟠 UNDER REVIEW',  color: '#fb923c', bg: 'rgba(251,146,60,.12)',  border: 'rgba(251,146,60,.3)'  },
-  RESUBMITTED:   { label: '🔵 RESUBMITTED',   color: '#818cf8', bg: 'rgba(129,140,248,.12)', border: 'rgba(129,140,248,.3)' },
+  PENDING:       { label: 'IN PROGRESS',  className: 'bg-amber-50 text-amber-700 border border-amber-200/60' },
+  IN_PROGRESS:   { label: 'IN PROGRESS',  className: 'bg-amber-50 text-amber-700 border border-amber-200/60' },
+  CLOSED:        { label: 'CLOSED',       className: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' },
+  COMPLETED:     { label: 'CLOSED',       className: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' },
+  UNDER_REVIEW:  { label: 'UNDER REVIEW', className: 'bg-rose-50 text-rose-700 border border-rose-200/60' },
+  RESUBMITTED:   { label: 'RESUBMITTED',  className: 'bg-blue-50 text-blue-700 border border-blue-200/60' },
 };
-
-import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
 // File → High-Fidelity DataURL or Supabase Storage upload
 async function uploadSurveyDocument(file, taskId, docType = 'report') {
   if (!file) return null;
 
-  // 1. Try Supabase Storage if configured
   if (isSupabaseConfigured && supabase) {
     try {
       const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -62,7 +60,6 @@ async function uploadSurveyDocument(file, taskId, docType = 'report') {
     }
   }
 
-  // 2. High-fidelity base64 DataURL (supports up to 15MB without dropping files)
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => resolve(e.target.result);
@@ -79,31 +76,27 @@ function ProjectTile({ project, taskCount, onOpen }) {
     <button
       type="button"
       onClick={onOpen}
-      className="group text-left p-5 rounded-2xl border transition-all duration-200 cursor-pointer w-full"
-      style={{ background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(100,116,139,.22)' }}
-      onMouseEnter={(e) => { e.currentTarget.style.border = '1px solid rgba(56,189,248,.4)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(56,189,248,.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.border = '1px solid rgba(100,116,139,.22)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
+      className="group text-left p-5 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer w-full"
     >
       {/* Status badge */}
       <div
-        className="inline-block text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full mb-3 border"
-        style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
+        className={`inline-block text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-3 ${st.className}`}
       >
         {st.label}
       </div>
 
-      <h3 className="text-sm font-bold text-white mb-1 leading-snug">{project.project_name}</h3>
-      <div className="text-[11px] font-mono text-sky-400 mb-3">{project.project_id}</div>
+      <h3 className="text-sm font-bold text-slate-900 mb-1 leading-snug">{project.project_name}</h3>
+      <div className="text-[11px] font-mono text-blue-600 mb-3">{project.project_id}</div>
 
-      <div className="flex items-center justify-between text-[11px]">
-        <span className="flex items-center gap-1.5 text-slate-400">
-          <MapPin className="w-3 h-3 text-emerald-400" />
+      <div className="flex items-center justify-between text-xs">
+        <span className="flex items-center gap-1.5 text-slate-500">
+          <MapPin className="w-3.5 h-3.5 text-blue-600" />
           {taskCount} plot{taskCount !== 1 ? 's' : ''} assigned
         </span>
-        <span className="text-slate-500 text-[10px]">{new Date(project.created_at).toLocaleDateString('en-IN')}</span>
+        <span className="text-slate-400 text-[11px]">{new Date(project.created_at).toLocaleDateString('en-IN')}</span>
       </div>
 
-      <div className="mt-3 text-xs font-semibold text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="mt-3 text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
         View Plots →
       </div>
     </button>
@@ -138,39 +131,32 @@ function PlotFormCard({ task, localData, onChange }) {
   }, [onChange, task.id]);
 
   const ss = STATUS_STYLE[task.status] || STATUS_STYLE.Pending;
-  const inp = 'w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500';
+  const inp = 'w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-all';
 
   return (
     <div
-      className="p-4 rounded-2xl border"
-      style={{
-        background: 'rgba(9,13,27,0.8)',
-        border: task.officerStatus === 'Under Review'
-          ? '1px solid rgba(251,146,60,.4)'
-          : '1px solid rgba(100,116,139,.2)',
-      }}
+      className={`p-5 rounded-xl border bg-white shadow-sm transition-all ${
+        task.officerStatus === 'Under Review' ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200'
+      }`}
     >
-      {/* Officer feedback callout (shown when plot was sent for review or has officer remarks) */}
+      {/* Officer feedback callout */}
       {(task.officerStatus === 'Under Review' || task.reviewRemarks || task.officerRemarks) && (
         <div
-          className="mb-3.5 p-3.5 rounded-xl border text-xs shadow-lg"
-          style={{
-            background: task.officerStatus === 'Under Review' ? 'rgba(251,146,60,.12)' : 'rgba(56,189,248,.12)',
-            border: task.officerStatus === 'Under Review' ? '1px solid rgba(251,146,60,.45)' : '1px solid rgba(56,189,248,.35)',
-          }}
+          className={`mb-4 p-3.5 rounded-lg border text-xs ${
+            task.officerStatus === 'Under Review'
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
+              : 'bg-blue-50 border-blue-200 text-blue-900'
+          }`}
         >
-          <div
-            className="flex items-center gap-1.5 font-bold mb-1"
-            style={{ color: task.officerStatus === 'Under Review' ? '#fb923c' : '#38bdf8' }}
-          >
-            <MessageSquare className="w-4 h-4 shrink-0" />
+          <div className="flex items-center gap-1.5 font-bold mb-1">
+            <MessageSquare className="w-4 h-4 shrink-0 text-amber-600" />
             <span>
               {task.officerStatus === 'Under Review'
                 ? '⚠️ Municipal Officer Feedback — Action Required (Re-Survey)'
                 : '📝 Municipal Officer Instructions / Remarks'}
             </span>
           </div>
-          <p className="text-slate-200 leading-relaxed font-medium pl-5">
+          <p className="leading-relaxed font-medium pl-5 text-slate-700">
             {task.reviewRemarks || task.officerRemarks || 'Please review parcel boundaries, verify Khasra number, and re-upload required documents.'}
           </p>
         </div>
@@ -179,14 +165,13 @@ function PlotFormCard({ task, localData, onChange }) {
       {/* Plot header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-xs font-mono text-sky-300">{task.plotId}</span>
-          <span className="text-[10px] text-slate-400 font-mono">
+          <span className="font-bold text-xs font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
+            {task.plotId}
+          </span>
+          <span className="text-xs text-slate-500 font-mono">
             {localData.khasraNo || task.khasraNo ? `Khasra: ${localData.khasraNo || task.khasraNo}` : '📋 Khasra: Unverified'}
           </span>
-          <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded border"
-            style={{ background: ss.bg, color: ss.color, border: `1px solid ${ss.border}` }}
-          >
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ss.className}`}>
             {task.status}
           </span>
         </div>
@@ -195,24 +180,24 @@ function PlotFormCard({ task, localData, onChange }) {
             href={`https://www.google.com/maps?q=${task.coords.lat},${task.coords.lng}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1 text-sky-400 hover:text-sky-300 text-[10px] transition-colors shrink-0"
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs font-semibold transition-colors shrink-0"
           >
-            <Navigation className="w-3 h-3" /> Navigate <ExternalLink className="w-2.5 h-2.5" />
+            <Navigation className="w-3.5 h-3.5" /> Navigate <ExternalLink className="w-3 h-3" />
           </a>
         )}
       </div>
 
       {task.address && (
-        <div className="flex items-start gap-1.5 text-[11px] text-slate-400 mb-3">
-          <MapPin className="w-3.5 h-3.5 text-slate-600 shrink-0 mt-0.5" />{task.address}
+        <div className="flex items-start gap-1.5 text-xs text-slate-500 mb-3">
+          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />{task.address}
         </div>
       )}
 
       {/* Form fields — 2 col grid */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-            <User className="w-2.5 h-2.5" /> Owner Name (On-site)
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            <User className="w-3 h-3 text-slate-400" /> Owner Name (On-site)
           </label>
           <input
             type="text"
@@ -223,8 +208,8 @@ function PlotFormCard({ task, localData, onChange }) {
           />
         </div>
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-            <Phone className="w-2.5 h-2.5 text-emerald-400" /> Phone Number
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            <Phone className="w-3 h-3 text-emerald-600" /> Phone Number
           </label>
           <input
             type="text"
@@ -235,8 +220,8 @@ function PlotFormCard({ task, localData, onChange }) {
           />
         </div>
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-            <Tag className="w-2.5 h-2.5 text-sky-400" /> Aadhaar Number
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            <Tag className="w-3 h-3 text-blue-600" /> Aadhaar Number
           </label>
           <input
             type="text"
@@ -247,7 +232,7 @@ function PlotFormCard({ task, localData, onChange }) {
           />
         </div>
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-amber-300 uppercase tracking-wide mb-1">
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 uppercase tracking-wide mb-1">
             📋 Khasra / Dag / Survey No.
           </label>
           <input
@@ -259,8 +244,8 @@ function PlotFormCard({ task, localData, onChange }) {
           />
         </div>
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-            <Tag className="w-2.5 h-2.5" /> Verified Land Classification
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            <Tag className="w-3 h-3 text-slate-400" /> Verified Land Classification
           </label>
           <div className="relative">
             <select
@@ -269,14 +254,14 @@ function PlotFormCard({ task, localData, onChange }) {
               className={`${inp} pr-6 appearance-none cursor-pointer`}
             >
               {LAND_CLASSES.map((c) => (
-                <option key={c} value={c} style={{ background: '#0f172a' }}>{c}</option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
-            <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500" />
+            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
           </div>
         </div>
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-sky-400 uppercase tracking-wide mb-1">
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 uppercase tracking-wide mb-1">
             📍 Zone Designation / Location Type
           </label>
           <div className="relative">
@@ -287,16 +272,16 @@ function PlotFormCard({ task, localData, onChange }) {
                 onChange('zoneType', z);
                 onChange('isRural', z === 'RURAL');
               }}
-              className={`${inp} pr-6 appearance-none cursor-pointer font-medium text-sky-300`}
+              className={`${inp} pr-6 appearance-none cursor-pointer font-medium text-slate-800`}
             >
-              <option value="URBAN" style={{ background: '#0f172a' }}>🏙️ Urban (1.2x Multiplier)</option>
-              <option value="RURAL" style={{ background: '#0f172a' }}>🌾 Rural (2.0x Multiplier)</option>
+              <option value="URBAN">🏙️ Urban (1.2x Multiplier)</option>
+              <option value="RURAL">🌾 Rural (2.0x Multiplier)</option>
             </select>
-            <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500" />
+            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
           </div>
         </div>
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 uppercase tracking-wide mb-1">
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
             📏 On-Ground Measured Area (sq m)
           </label>
           <input
@@ -308,8 +293,8 @@ function PlotFormCard({ task, localData, onChange }) {
           />
         </div>
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-amber-400 uppercase tracking-wide mb-1">
-            🏠 Assets / Structure / Crop Value (₹)
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            🏠 Assets / Structure Value (₹)
           </label>
           <input
             type="number"
@@ -322,65 +307,62 @@ function PlotFormCard({ task, localData, onChange }) {
       </div>
 
       {/* File uploads */}
-      <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+      <div className="grid grid-cols-2 gap-3 mt-3">
         {/* Soil / Legal Report */}
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-            <FileText className="w-2.5 h-2.5" /> Legal / Soil Report (PDF)
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            <FileText className="w-3 h-3 text-slate-400" /> Legal / Soil Report (PDF)
           </label>
           <input ref={soilInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleSoilUpload} />
           <button
             type="button"
             onClick={() => soilInputRef.current?.click()}
             disabled={uploadingSoil}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer hover:border-sky-500 hover:text-sky-300 disabled:opacity-60"
-            style={{
-              background: localData.soilReportUrl ? 'rgba(52,211,153,.1)' : 'rgba(30,41,59,0.6)',
-              border: localData.soilReportUrl ? '1px solid rgba(52,211,153,.35)' : '1px dashed rgba(100,116,139,.35)',
-              color: localData.soilReportUrl ? '#34d399' : '#64748b',
-            }}
+            className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer disabled:opacity-60 ${
+              localData.soilReportUrl
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-slate-50 border-dashed border-slate-300 text-slate-600 hover:bg-slate-100'
+            }`}
           >
             {uploadingSoil ? (
-              <><Clock className="w-3 h-3 animate-spin text-sky-400" /> Uploading PDF…</>
+              <><Clock className="w-3.5 h-3.5 animate-spin text-blue-600" /> Uploading PDF…</>
             ) : localData.soilReportUrl ? (
-              <><CheckCircle2 className="w-3 h-3" /> {localData.soilReportName || 'Report Uploaded'}</>
+              <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {localData.soilReportName || 'Report Uploaded'}</>
             ) : (
-              <><Upload className="w-3 h-3" /> Upload Report</>
+              <><Upload className="w-3.5 h-3.5 text-slate-400" /> Upload Report</>
             )}
           </button>
         </div>
 
         {/* Site Photos */}
         <div>
-          <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-            <Camera className="w-2.5 h-2.5" /> Site Inspection Photo
+          <label className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            <Camera className="w-3 h-3 text-slate-400" /> Site Inspection Photo
           </label>
           <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
           <button
             type="button"
             onClick={() => photoInputRef.current?.click()}
             disabled={uploadingPhoto}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer hover:border-sky-500 hover:text-sky-300 disabled:opacity-60"
-            style={{
-              background: localData.sitePhotoUrl ? 'rgba(52,211,153,.1)' : 'rgba(30,41,59,0.6)',
-              border: localData.sitePhotoUrl ? '1px solid rgba(52,211,153,.35)' : '1px dashed rgba(100,116,139,.35)',
-              color: localData.sitePhotoUrl ? '#34d399' : '#64748b',
-            }}
+            className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer disabled:opacity-60 ${
+              localData.sitePhotoUrl
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-slate-50 border-dashed border-slate-300 text-slate-600 hover:bg-slate-100'
+            }`}
           >
             {uploadingPhoto ? (
-              <><Clock className="w-3 h-3 animate-spin text-sky-400" /> Uploading Photo…</>
+              <><Clock className="w-3.5 h-3.5 animate-spin text-blue-600" /> Uploading Photo…</>
             ) : localData.sitePhotoUrl ? (
-              <><CheckCircle2 className="w-3 h-3" /> {localData.sitePhotoName || 'Photo Uploaded'}</>
+              <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {localData.sitePhotoName || 'Photo Uploaded'}</>
             ) : (
-              <><Upload className="w-3 h-3" /> Upload Photo</>
+              <><Upload className="w-3.5 h-3.5 text-slate-400" /> Upload Photo</>
             )}
           </button>
-          {/* Preview thumbnail if it's a real base64 image */}
           {localData.sitePhotoUrl?.startsWith('data:image') && (
             <img
               src={localData.sitePhotoUrl}
               alt="Site preview"
-              className="mt-1.5 w-full h-16 object-cover rounded-lg border border-slate-700"
+              className="mt-2 w-full h-16 object-cover rounded-lg border border-slate-200"
             />
           )}
         </div>
@@ -421,15 +403,14 @@ function ProjectGrid({ onSelectProject, onSelectReview }) {
     return map;
   }, [allTasks]);
 
-  // Categorise projects into tabs
   const activeProjects    = projects.filter((p) => ['PENDING', 'IN_PROGRESS'].includes(p.status));
   const reviewProjects    = projects.filter((p) => p.status === 'UNDER_REVIEW');
   const completedProjects = projects.filter((p) => ['CLOSED', 'COMPLETED', 'RESUBMITTED'].includes(p.status));
 
   const TABS = [
-    { key: 'active',    label: 'Active Projects',    count: activeProjects.length,    color: '#fbbf24' },
-    { key: 'review',    label: 'Under Review',        count: reviewProjects.length,    color: '#fb923c' },
-    { key: 'completed', label: 'Completed Projects',  count: completedProjects.length, color: '#34d399' },
+    { key: 'active',    label: 'Active Projects',    count: activeProjects.length },
+    { key: 'review',    label: 'Under Review',        count: reviewProjects.length },
+    { key: 'completed', label: 'Completed Projects',  count: completedProjects.length },
   ];
 
   const shownProjects =
@@ -438,54 +419,48 @@ function ProjectGrid({ onSelectProject, onSelectReview }) {
     completedProjects;
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 flex overflow-hidden bg-slate-50">
       {/* Project grid panel */}
-      <div
-        className="flex-1 overflow-y-auto"
-        style={{ background: 'radial-gradient(ellipse at 70% 0%, rgba(56,189,248,.04) 0%, transparent 55%), #030712' }}
-      >
-        <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-6 py-8">
           {/* Header */}
-          <div className="mb-6 flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: 'rgba(56,189,248,.12)', border: '1px solid rgba(56,189,248,.25)' }}
-                >
-                  🔍
-                </div>
-                <div>
-                  <h1 className="text-xl font-black text-white">My Survey Projects</h1>
-                  <p className="text-xs text-slate-400">{userProfile?.name || 'Field Surveyor'} · {userProfile?.designation || 'Ground Inspector'}</p>
-                </div>
+          <div className="mb-6 p-5 rounded-xl border border-slate-200 bg-white shadow-sm flex items-start justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-xl shrink-0">
+                🧭
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">My Survey Projects</h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {userProfile?.name || 'Field Surveyor'} · {userProfile?.designation || 'Ground Inspector'}
+                </p>
               </div>
             </div>
-            <div className="text-right text-xs text-slate-500">
-              <div className="text-2xl font-black text-sky-400">{projects.length}</div>
-              <div>Projects Assigned</div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-slate-900">{projects.length}</div>
+              <div className="text-xs text-slate-500">Projects Assigned</div>
             </div>
           </div>
 
           {/* Tab bar */}
-          <div className="flex items-center gap-1 mb-6 p-1 rounded-2xl border" style={{ background: 'rgba(9,13,27,0.8)', border: '1px solid rgba(100,116,139,.18)' }}>
+          <div className="flex items-center gap-2 mb-6 p-1.5 rounded-xl border border-slate-200 bg-white shadow-sm">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                style={{
-                  background: activeTab === tab.key ? 'rgba(255,255,255,.06)' : 'transparent',
-                  color: activeTab === tab.key ? tab.color : '#64748b',
-                  border: activeTab === tab.key ? `1px solid ${tab.color}40` : '1px solid transparent',
-                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === tab.key
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
               >
                 {tab.label}
                 {tab.count > 0 && (
                   <span
-                    className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
-                    style={{ background: `${tab.color}22`, color: tab.color }}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}
                   >
                     {tab.count}
                   </span>
@@ -496,29 +471,25 @@ function ProjectGrid({ onSelectProject, onSelectReview }) {
 
           {/* Under Review info callout */}
           {activeTab === 'review' && (
-            <div
-              className="mb-5 p-4 rounded-2xl border text-xs"
-              style={{ background: 'rgba(251,146,60,.08)', border: '1px solid rgba(251,146,60,.3)' }}
-            >
-              <div className="flex items-center gap-2 font-bold text-orange-400 mb-1">
-                <RotateCcw className="w-3.5 h-3.5" /> Projects Returned for Re-Survey
+            <div className="mb-5 p-4 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-900 shadow-sm">
+              <div className="flex items-center gap-2 font-bold text-amber-800 mb-1">
+                <RotateCcw className="w-4 h-4" /> Projects Returned for Re-Survey
               </div>
-              <p className="text-slate-400">These projects were reviewed by the Municipal Officer and sent back with specific remarks. Open a project to view feedback and re-upload required documents.</p>
+              <p className="text-slate-600">
+                These projects were reviewed by the Municipal Officer and sent back with specific remarks. Open a project to view feedback and re-upload required documents.
+              </p>
             </div>
           )}
 
           {shownProjects.length === 0 ? (
-            <div
-              className="py-24 text-center rounded-2xl border"
-              style={{ border: '1px dashed rgba(100,116,139,.2)', background: 'rgba(15,23,42,0.4)' }}
-            >
-              <FolderOpen className="w-14 h-14 text-slate-700 mx-auto mb-4" />
-              <p className="text-base font-bold text-slate-500">
+            <div className="py-20 text-center rounded-xl border border-dashed border-slate-200 bg-white shadow-sm">
+              <FolderOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-base font-semibold text-slate-700">
                 {activeTab === 'active' ? 'No active projects' :
                  activeTab === 'review' ? 'No projects under review' :
                  'No completed projects yet'}
               </p>
-              <p className="text-sm text-slate-600 mt-2 max-w-sm mx-auto">
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                 {activeTab === 'active'
                   ? 'A Municipal Officer must create a project and dispatch plots before they appear here.'
                   : activeTab === 'review'
@@ -545,14 +516,11 @@ function ProjectGrid({ onSelectProject, onSelectReview }) {
         </div>
       </div>
 
-      {/* Map preview — context only */}
-      <div className="w-[420px] shrink-0 border-l border-slate-800 relative">
+      {/* Map preview */}
+      <div className="w-[420px] shrink-0 border-l border-slate-200 relative bg-white">
         <MapContainer />
-        <div
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
-          style={{ background: 'rgba(9,13,27,0.9)', border: '1px solid rgba(56,189,248,.25)', color: '#7dd3fc', backdropFilter: 'blur(8px)' }}
-        >
-          🗺️ Map Preview
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full text-xs font-semibold bg-white/95 border border-slate-200 text-slate-700 shadow-sm backdrop-blur-sm">
+          🗺️ Corridor Map View
         </div>
       </div>
     </div>
@@ -577,7 +545,6 @@ function ReviewInspection({ project, onBack }) {
     return unsub;
   }, [refreshReview]);
 
-  // Only show plots that the officer sent back
   const reviewTasks = allTasks.filter(
     (t) => t.projectId === project.project_id && (t.officerStatus === 'Under Review' || Boolean(t.reviewRemarks))
   );
@@ -624,9 +591,8 @@ function ReviewInspection({ project, onBack }) {
         khasraNo: fd.khasraNo !== undefined ? fd.khasraNo.trim() : (t.khasraNo || ''),
         zoneType: isR ? 'RURAL' : 'URBAN',
         isRural: isR,
-        // Sync landCategory from surveyor's verified classification so PDF/reports always use the updated value
         landCategory: fd.verifiedLandClass || t.verifiedLandClass || t.landCategory,
-        officerStatus: null,     // reset so officer can re-review
+        officerStatus: null,
         reviewRemarks: null,
         resubmittedAt: new Date().toISOString(),
         status: 'Completed',
@@ -634,7 +600,6 @@ function ReviewInspection({ project, onBack }) {
     });
     await dataService.saveTasks(updated);
 
-    // Mark project as RESUBMITTED in Supabase + LocalStorage
     const allP = loadProjects();
     const targetProj = allP.find((p) => p.project_id === project.project_id);
     if (targetProj) {
@@ -647,57 +612,47 @@ function ReviewInspection({ project, onBack }) {
   }, [formData, project, showToast]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
       {/* Header */}
-      <div
-        className="h-12 px-4 flex items-center gap-3 border-b shrink-0"
-        style={{ background: 'rgba(9,13,27,0.98)', borderColor: 'rgba(251,146,60,.3)' }}
-      >
+      <div className="h-14 px-5 flex items-center gap-3 border-b border-slate-200 bg-white shrink-0 shadow-sm">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> All Projects
         </button>
-        <div className="w-px h-5 bg-slate-700" />
-        <RotateCcw className="w-4 h-4 text-orange-400" />
+        <div className="w-px h-5 bg-slate-200" />
+        <RotateCcw className="w-4 h-4 text-amber-600" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-white truncate">{project.project_name}</div>
-          <div className="text-[10px] font-mono text-orange-400">{project.project_id} · Under Review — Re-Survey Required</div>
+          <div className="text-sm font-bold text-slate-900 truncate">{project.project_name}</div>
+          <div className="text-[11px] font-mono text-amber-700">{project.project_id} · Under Review — Re-Survey Required</div>
         </div>
-        <span
-          className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-          style={{ background: 'rgba(251,146,60,.15)', color: '#fb923c', border: '1px solid rgba(251,146,60,.3)' }}
-        >
+        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/60">
           {reviewTasks.length} plot{reviewTasks.length !== 1 ? 's' : ''} flagged
         </span>
       </div>
 
       {/* Plots form */}
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: '#060a14' }}>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {resubmitted ? (
-            <div
-              className="py-16 text-center rounded-2xl border"
-              style={{ background: 'rgba(251,146,60,.08)', border: '1px solid rgba(251,146,60,.3)' }}
-            >
-              <CheckCircle2 className="w-10 h-10 text-orange-400 mx-auto mb-3" />
-              <p className="text-base font-bold text-white">Re-Survey Submitted for Officer Review</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            <div className="py-16 text-center rounded-xl border border-slate-200 bg-white shadow-sm">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
+              <p className="text-base font-bold text-slate-900">Re-Survey Submitted for Officer Review</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                 Updated documents and data have been dispatched. The Municipal Officer will review and approve or send further remarks.
               </p>
               <button
                 type="button"
                 onClick={onBack}
-                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer"
-                style={{ background: 'rgba(251,146,60,.25)', border: '1px solid rgba(251,146,60,.5)' }}
+                className="mt-4 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer shadow-sm"
               >
                 ← Back to Projects
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {reviewTasks.map((task) => (
                 <PlotFormCard
                   key={task.id}
@@ -711,12 +666,7 @@ function ReviewInspection({ project, onBack }) {
                 type="button"
                 disabled={submitting}
                 onClick={handleResubmit}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer hover:opacity-90 active:scale-98 disabled:opacity-50"
-                style={{
-                  background: 'linear-gradient(135deg, #ea580c, #d97706)',
-                  color: '#fff',
-                  boxShadow: '0 0 20px rgba(234,88,12,.3)',
-                }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all cursor-pointer bg-blue-600 hover:bg-blue-700 text-white shadow-sm disabled:opacity-60"
               >
                 {submitting ? (
                   <><Clock className="w-4 h-4 animate-spin" /> Saving…</>
@@ -729,7 +679,7 @@ function ReviewInspection({ project, onBack }) {
         </div>
 
         {/* Map */}
-        <div className="w-80 shrink-0 border-l border-slate-800 relative">
+        <div className="w-80 shrink-0 border-l border-slate-200 relative bg-white">
           <MapContainer />
         </div>
       </div>
@@ -758,7 +708,6 @@ function PlotInspection({ project, onBack }) {
 
   const projTasks = allTasks.filter((t) => t.projectId === project.project_id);
 
-  // Local form state keyed by task ID
   const [formData, setFormData] = useState(() => {
     const init = {};
     projTasks.forEach((t) => {
@@ -789,15 +738,8 @@ function PlotInspection({ project, onBack }) {
     setFormData((prev) => ({ ...prev, [taskId]: { ...prev[taskId], [field]: value } }));
   }, []);
 
-  const handleNavigate = (task) => {
-    const match = allFeatures.find((f) => f.properties?.plotId === task.plotId);
-    if (match) focusOnFeature(match, 'plot', 17);
-    else if (task.coords?.lat) window.open(`https://www.google.com/maps?q=${task.coords.lat},${task.coords.lng}`, '_blank', 'noreferrer');
-  };
-
   const handleFinalSubmit = useCallback(async () => {
     setSubmitting(true);
-    // Merge form data back into task records
     const allT = loadTasks();
     const updated = allT.map((t) => {
       if (t.projectId !== project.project_id) return t;
@@ -809,14 +751,12 @@ function PlotInspection({ project, onBack }) {
         khasraNo: fd.khasraNo !== undefined ? fd.khasraNo.trim() : (t.khasraNo || ''),
         zoneType: isR ? 'RURAL' : 'URBAN',
         isRural: isR,
-        // Sync landCategory from surveyor's verified classification so PDF/reports always use the updated value
         landCategory: fd.verifiedLandClass || t.verifiedLandClass || t.landCategory,
         status: 'Completed',
       };
     });
     await dataService.saveTasks(updated);
 
-    // Mark project as CLOSED in Supabase + LocalStorage
     const allP = loadProjects();
     const targetP = allP.find((p) => p.project_id === project.project_id);
     if (targetP) {
@@ -833,47 +773,41 @@ function PlotInspection({ project, onBack }) {
   }).length;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
       {/* Branch header */}
-      <div
-        className="h-12 px-4 flex items-center gap-3 border-b border-slate-800 shrink-0"
-        style={{ background: 'rgba(9,13,27,0.98)' }}
-      >
+      <div className="h-14 px-5 flex items-center gap-3 border-b border-slate-200 bg-white shrink-0 shadow-sm">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> All Projects
         </button>
-        <div className="w-px h-5 bg-slate-700" />
-        <FolderOpen className="w-4 h-4 text-sky-400" />
+        <div className="w-px h-5 bg-slate-200" />
+        <FolderOpen className="w-4 h-4 text-blue-600" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-white truncate">{project.project_name}</div>
-          <div className="text-[10px] font-mono text-sky-400">{project.project_id}</div>
+          <div className="text-sm font-bold text-slate-900 truncate">{project.project_name}</div>
+          <div className="text-[11px] font-mono text-blue-600">{project.project_id}</div>
         </div>
-        <div className="text-[11px] text-slate-400 shrink-0">
-          <span className="text-white font-bold">{completedCount}</span> / {projTasks.length} forms filled
+        <div className="text-xs text-slate-500 shrink-0">
+          <span className="text-slate-900 font-bold">{completedCount}</span> / {projTasks.length} forms filled
         </div>
       </div>
 
       {/* Plot form list */}
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: '#060a14' }}>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {submitted && (
-            <div
-              className="p-4 rounded-2xl border text-center mb-4"
-              style={{ background: 'rgba(5,46,22,.4)', border: '1px solid rgba(52,211,153,.3)' }}
-            >
-              <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-emerald-300">Project Closed & Submitted</p>
-              <p className="text-xs text-slate-400 mt-1">All plot data has been saved. Municipal Officer can now review the reports.</p>
+            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-center mb-4 shadow-sm">
+              <CheckCircle2 className="w-7 h-7 text-emerald-600 mx-auto mb-1.5" />
+              <p className="text-sm font-bold text-emerald-800">Project Closed & Submitted</p>
+              <p className="text-xs text-slate-600 mt-0.5">All plot data has been saved. Municipal Officer can now review the reports.</p>
             </div>
           )}
 
           {projTasks.length === 0 && (
             <div className="py-20 text-center text-slate-500">
-              <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <AlertCircle className="w-10 h-10 mx-auto mb-2 text-slate-300" />
               <p className="text-sm font-medium">No plots found in this project.</p>
             </div>
           )}
@@ -889,37 +823,31 @@ function PlotInspection({ project, onBack }) {
 
           {/* Batch Submit */}
           {projTasks.length > 0 && !submitted && (
-            <div
-              className="mt-4 p-5 rounded-2xl border"
-              style={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(56,189,248,.2)' }}
-            >
+            <div className="mt-5 p-5 rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <div className="text-sm font-bold text-white">Batch Submit & Close Project</div>
-                  <div className="text-xs text-slate-400 mt-0.5">
+                  <div className="text-sm font-bold text-slate-900">Batch Submit & Close Project</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
                     {completedCount} of {projTasks.length} plot forms completed.
                     {completedCount < projTasks.length && (
-                      <span className="text-amber-400 ml-1">Incomplete forms will be saved as-is.</span>
+                      <span className="text-amber-600 ml-1 font-medium">Incomplete forms will be saved as-is.</span>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-black" style={{ color: completedCount === projTasks.length ? '#34d399' : '#fbbf24' }}>
+                  <div className="text-2xl font-bold text-slate-900">
                     {Math.round((completedCount / Math.max(projTasks.length, 1)) * 100)}%
                   </div>
-                  <div className="text-[10px] text-slate-500">Complete</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Complete</div>
                 </div>
               </div>
 
               {/* Progress bar */}
-              <div className="w-full h-1.5 rounded-full bg-slate-800 mb-4 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-slate-100 mb-4 overflow-hidden border border-slate-200">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
+                  className="h-full rounded-full transition-all duration-500 bg-blue-600"
                   style={{
                     width: `${Math.round((completedCount / Math.max(projTasks.length, 1)) * 100)}%`,
-                    background: completedCount === projTasks.length
-                      ? 'linear-gradient(90deg,#10b981,#34d399)'
-                      : 'linear-gradient(90deg,#f59e0b,#fbbf24)',
                   }}
                 />
               </div>
@@ -928,12 +856,7 @@ function PlotInspection({ project, onBack }) {
                 type="button"
                 onClick={handleFinalSubmit}
                 disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer disabled:opacity-60 hover:scale-[1.02] active:scale-95"
-                style={{
-                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                  color: '#fff',
-                  boxShadow: '0 0 20px rgba(56,189,248,.3)',
-                }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm transition-all cursor-pointer disabled:opacity-60 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
               >
                 {submitting ? (
                   <><Clock className="w-4 h-4 animate-spin" /> Saving…</>
@@ -945,8 +868,8 @@ function PlotInspection({ project, onBack }) {
           )}
         </div>
 
-        {/* Map — surveyors can navigate to each plot */}
-        <div className="w-80 shrink-0 border-l border-slate-800 relative">
+        {/* Map */}
+        <div className="w-80 shrink-0 border-l border-slate-200 relative bg-white">
           <MapContainer />
         </div>
       </div>

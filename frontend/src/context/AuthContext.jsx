@@ -14,33 +14,33 @@ export const ROLE_META = {
     label: 'Municipal Officer',
     sublabel: 'Planner & Admin',
     icon: '🗺️',
-    color: '#10b981',   // emerald
-    bg: 'rgba(16,185,129,.15)',
-    border: 'rgba(16,185,129,.35)',
+    color: '#047857',   // emerald-700
+    bg: '#ecfdf5',      // emerald-50
+    border: '#a7f3d0',  // emerald-200
   },
   SURVEYOR: {
     label: 'Field Surveyor',
     sublabel: 'Ground Inspector',
     icon: '🔍',
-    color: '#38bdf8',   // sky
-    bg: 'rgba(56,189,248,.15)',
-    border: 'rgba(56,189,248,.35)',
+    color: '#0369a1',   // sky-700
+    bg: '#f0f9ff',      // sky-50
+    border: '#bae6fd',  // sky-200
   },
   FINANCE_OFFICER: {
     label: 'Finance Officer',
     sublabel: 'Treasury & Disbursements',
     icon: '💰',
-    color: '#fbbf24',   // amber
-    bg: 'rgba(251,191,36,.15)',
-    border: 'rgba(251,191,36,.35)',
+    color: '#b45309',   // amber-700
+    bg: '#fffbeb',      // amber-50
+    border: '#fde68a',  // amber-200
   },
   BENEFICIARY: {
     label: 'Land Owner',
     sublabel: 'Beneficiary Portal',
     icon: '🏡',
-    color: '#fb923c',   // amber-orange
-    bg: 'rgba(251,146,60,.15)',
-    border: 'rgba(251,146,60,.35)',
+    color: '#4338ca',   // indigo-700
+    bg: '#eef2ff',      // indigo-50
+    border: '#c7d2fe',  // indigo-200
   },
 };
 

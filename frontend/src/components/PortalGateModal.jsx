@@ -1,31 +1,26 @@
 import React, { useState } from 'react';
 import { useAuth, ROLES } from '../context/AuthContext';
+import { ShieldCheck, UserCheck, ArrowRight, ArrowLeft, Building2, MapPin, Landmark, AlertCircle } from 'lucide-react';
 
 // Tier 1 portal card data
 const PORTAL_CARDS = [
   {
     id: 'govt',
     icon: '🏛️',
-    title: 'Govt Level User',
-    subtitle: 'Access planning, survey & administrative tools',
-    gradient: 'from-emerald-600/30 via-teal-700/20 to-slate-900',
-    borderHover: '#10b981',
-    accentColor: '#34d399',
-    badge: 'GOVERNMENT PORTAL',
-    badgeColor: 'rgba(16,185,129,.2)',
-    badgeText: '#34d399',
+    title: 'Government Official',
+    subtitle: 'Access planning, ground survey verification & statutory treasury tools',
+    badge: 'OFFICIAL PORTAL',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    btnText: 'Official Sign In →',
   },
   {
     id: 'beneficiary',
     icon: '🏡',
-    title: 'Beneficiary / Land Owner',
-    subtitle: 'Check acquisition status, payment timeline & file grievance',
-    gradient: 'from-orange-600/30 via-amber-700/20 to-slate-900',
-    borderHover: '#fb923c',
-    accentColor: '#fdba74',
+    title: 'Beneficiary / Landowner',
+    subtitle: 'Check plot status, compensation notice & live direct benefit transfer timeline',
     badge: 'CITIZEN PORTAL',
-    badgeColor: 'rgba(251,146,60,.2)',
-    badgeText: '#fdba74',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200/60',
+    btnText: 'Enter Citizen Portal →',
   },
 ];
 
@@ -52,19 +47,19 @@ export default function PortalGateModal() {
   const goToTier2 = () => {
     setAnimating(true);
     setLoginErr('');
-    setTimeout(() => { setTier(2); setAnimating(false); }, 180);
+    setTimeout(() => { setTier(2); setAnimating(false); }, 150);
   };
 
   const goToTier3 = () => {
     setAnimating(true);
     setLoginErr('');
-    setTimeout(() => { setTier(3); setAnimating(false); }, 180);
+    setTimeout(() => { setTier(3); setAnimating(false); }, 150);
   };
 
   const goBack = () => {
     setAnimating(true);
     setLoginErr('');
-    setTimeout(() => { setTier(1); setAnimating(false); }, 180);
+    setTimeout(() => { setTier(1); setAnimating(false); }, 150);
   };
 
   const handleSupabaseGovtAuth = async (e) => {
@@ -118,69 +113,40 @@ export default function PortalGateModal() {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{
-        background: 'radial-gradient(ellipse at center, rgba(2,8,23,0.97) 0%, rgba(0,0,0,0.99) 100%)',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      {/* Background decorative glow */}
-      <div
-        className="absolute inset-0 pointer-events-none overflow-hidden"
-        aria-hidden="true"
-      >
-        <div
-          className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #10b981 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full opacity-8"
-          style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}
-        />
-      </div>
-
-      <div className="relative w-full max-w-xl mx-4 flex flex-col items-center gap-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl flex flex-col items-center gap-6">
 
         {/* Header */}
         <div className="text-center">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <div
-              className="w-12 h-12 rounded-2xl p-[2px] shadow-2xl"
-              style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}
-            >
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-xl">
-                🌏
-              </div>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-sm">
+              🏛️
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-black text-white tracking-tight">Bhoomi Setu</h1>
-              <p className="text-xs text-slate-400 font-medium">West Bengal Land Acquisition Intelligence Platform · SIH 2026</p>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Bhoomi Setu</h1>
+              <p className="text-xs text-slate-500 font-medium">West Bengal Land Acquisition & Statutory Disbursement System</p>
             </div>
           </div>
-          <div
-            className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
-            style={{ background: 'rgba(16,185,129,.12)', color: '#34d399', border: '1px solid rgba(16,185,129,.25)' }}
-          >
-            Secure Portal Access
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 mt-1">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Secure Unified Portal Access
           </div>
         </div>
 
         {/* Card Panel */}
         <div
-          className="w-full rounded-2xl border border-slate-800 overflow-hidden shadow-2xl"
+          className="w-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-lg"
           style={{
-            background: 'rgba(15,23,42,0.92)',
             opacity: animating ? 0 : 1,
-            transform: animating ? 'translateY(8px)' : 'translateY(0)',
-            transition: 'opacity 0.18s ease, transform 0.18s ease',
+            transform: animating ? 'translateY(6px)' : 'translateY(0)',
+            transition: 'opacity 0.15s ease, transform 0.15s ease',
           }}
         >
           {/* Tier 1 — Main Selector */}
           {tier === 1 && (
-            <div className="p-6">
-              <p className="text-center text-sm text-slate-400 mb-5 font-medium">
-                Select your access role to continue
+            <div className="p-6 sm:p-8">
+              <p className="text-center text-sm text-slate-500 mb-6 font-medium">
+                Select your designated access role to proceed
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {PORTAL_CARDS.map((card) => (
@@ -188,29 +154,22 @@ export default function PortalGateModal() {
                     key={card.id}
                     type="button"
                     onClick={() => card.id === 'govt' ? goToTier2() : goToTier3()}
-                    className="relative group text-left p-5 rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden"
-                    style={{
-                      backgroundImage: `linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,1) 100%)`,
-                      border: `1px solid rgba(100,116,139,0.25)`,
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.border = `1px solid ${card.borderHover}55`; e.currentTarget.style.boxShadow = `0 0 24px ${card.borderHover}22`; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.border = '1px solid rgba(100,116,139,0.25)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    className="text-left p-5 rounded-xl border border-slate-200 bg-white hover:border-blue-500 hover:shadow-md transition-all duration-150 cursor-pointer group flex flex-col justify-between"
                   >
-                    {/* badge */}
-                    <div
-                      className="inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest mb-3"
-                      style={{ background: card.badgeColor, color: card.badgeText }}
-                    >
-                      {card.badge}
+                    <div>
+                      <div className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border mb-3 ${card.badgeClass}`}>
+                        {card.badge}
+                      </div>
+                      <div className="text-3xl mb-2">{card.icon}</div>
+                      <h3 className="text-base font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">
+                        {card.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                        {card.subtitle}
+                      </p>
                     </div>
-                    <div className="text-4xl mb-3">{card.icon}</div>
-                    <h3 className="text-base font-bold text-white mb-1">{card.title}</h3>
-                    <p className="text-xs text-slate-400 leading-snug">{card.subtitle}</p>
-                    <div
-                      className="mt-4 text-xs font-semibold flex items-center gap-1 transition-colors"
-                      style={{ color: card.accentColor }}
-                    >
-                      {card.id === 'govt' ? 'Official Sign In →' : 'Enter Portal →'}
+                    <div className="text-xs font-semibold text-blue-600 flex items-center gap-1 pt-2 border-t border-slate-100">
+                      <span>{card.btnText}</span>
                     </div>
                   </button>
                 ))}
@@ -218,36 +177,37 @@ export default function PortalGateModal() {
             </div>
           )}
 
-          {/* Tier 2 — Govt Supabase Cloud Auth */}
+          {/* Tier 2 — Govt Cloud Auth */}
           {tier === 2 && (
-            <div className="p-6">
+            <div className="p-6 sm:p-8">
               <button
                 type="button"
                 onClick={goBack}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors mb-4 cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors mb-5 cursor-pointer"
               >
-                ← Back to Portal Selection
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Portal Selection
               </button>
 
-              <div className="mb-5">
+              <div className="mb-6">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🔐</span>
-                  <p className="text-sm font-semibold text-white">Government Official Access</p>
+                  <h3 className="text-base font-bold text-slate-900">Government Official Sign In</h3>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Authenticate with your registered Supabase Cloud officer account</p>
+                <p className="text-xs text-slate-500 mt-1">Authenticate using your registered department officer credentials</p>
               </div>
 
               {loginErr && (
-                <div className="mb-4 p-3 rounded-xl border border-red-500/30 bg-red-950/40 text-red-300 text-xs font-medium">
-                  ⚠️ {loginErr}
+                <div className="mb-4 p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{loginErr}</span>
                 </div>
               )}
 
-              <form onSubmit={handleSupabaseGovtAuth} className="space-y-3.5 max-w-md mx-auto">
+              <form onSubmit={handleSupabaseGovtAuth} className="space-y-4 max-w-md mx-auto">
                 {isSignUp && (
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
-                      Full Officer Name
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Full Official Name
                     </label>
                     <input
                       type="text"
@@ -255,13 +215,13 @@ export default function PortalGateModal() {
                       placeholder="e.g. Priya Chakraborty"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Official Email Address
                   </label>
                   <input
@@ -270,12 +230,12 @@ export default function PortalGateModal() {
                     placeholder="officer@bhoomi.gov.in"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Password
                   </label>
                   <input
@@ -284,50 +244,50 @@ export default function PortalGateModal() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1">
-                    Designated Role
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Designated Government Role
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedGovtRole(ROLES.MUNICIPAL_OFFICER)}
-                      className="p-2 rounded-xl border text-left cursor-pointer transition-all"
-                      style={{
-                        background: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? 'rgba(16,185,129,.15)' : 'rgba(30,41,59,.4)',
-                        borderColor: selectedGovtRole === ROLES.MUNICIPAL_OFFICER ? '#10b981' : 'rgba(100,116,139,.25)',
-                      }}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                        selectedGovtRole === ROLES.MUNICIPAL_OFFICER
+                          ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
-                      <div className="text-base">🗺️</div>
-                      <div className="text-[11px] font-bold text-white mt-0.5 leading-tight">Municipal Officer</div>
+                      <div className="text-lg mb-1">🗺️</div>
+                      <div className="text-xs font-bold leading-tight">Municipal Officer</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedGovtRole(ROLES.SURVEYOR)}
-                      className="p-2 rounded-xl border text-left cursor-pointer transition-all"
-                      style={{
-                        background: selectedGovtRole === ROLES.SURVEYOR ? 'rgba(56,189,248,.15)' : 'rgba(30,41,59,.4)',
-                        borderColor: selectedGovtRole === ROLES.SURVEYOR ? '#38bdf8' : 'rgba(100,116,139,.25)',
-                      }}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                        selectedGovtRole === ROLES.SURVEYOR
+                          ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
-                      <div className="text-base">🔍</div>
-                      <div className="text-[11px] font-bold text-white mt-0.5 leading-tight">Field Surveyor</div>
+                      <div className="text-lg mb-1">🔍</div>
+                      <div className="text-xs font-bold leading-tight">Field Surveyor</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedGovtRole(ROLES.FINANCE_OFFICER)}
-                      className="p-2 rounded-xl border text-left cursor-pointer transition-all"
-                      style={{
-                        background: selectedGovtRole === ROLES.FINANCE_OFFICER ? 'rgba(251,191,36,.15)' : 'rgba(30,41,59,.4)',
-                        borderColor: selectedGovtRole === ROLES.FINANCE_OFFICER ? '#fbbf24' : 'rgba(100,116,139,.25)',
-                      }}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                        selectedGovtRole === ROLES.FINANCE_OFFICER
+                          ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
-                      <div className="text-base">💰</div>
-                      <div className="text-[11px] font-bold text-white mt-0.5 leading-tight">Finance Officer</div>
+                      <div className="text-lg mb-1">💰</div>
+                      <div className="text-xs font-bold leading-tight">Finance Officer</div>
                     </button>
                   </div>
                 </div>
@@ -335,55 +295,52 @@ export default function PortalGateModal() {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2.5 mt-2 rounded-xl font-bold text-xs text-white transition-all cursor-pointer shadow-lg disabled:opacity-50"
-                  style={{
-                    background: 'linear-gradient(135deg, #0284c7, #0f766e)',
-                    boxShadow: '0 0 20px rgba(2,132,199,0.3)',
-                  }}
+                  className="w-full py-2.5 mt-2 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer shadow-sm disabled:opacity-50"
                 >
-                  {authLoading ? 'Authenticating…' : isSignUp ? 'Register Supabase Cloud Account →' : 'Sign In with Supabase →'}
+                  {authLoading ? 'Authenticating…' : isSignUp ? 'Register Officer Account →' : 'Sign In as Official →'}
                 </button>
 
-                <div className="text-center pt-1">
+                <div className="text-center pt-2">
                   <button
                     type="button"
                     onClick={() => { setIsSignUp(!isSignUp); setLoginErr(''); }}
-                    className="text-[11px] text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
                   >
-                    {isSignUp ? 'Already have an account? Sign In' : 'Need a new officer account? Register'}
+                    {isSignUp ? 'Already have an official account? Sign In' : 'Need a new officer account? Register'}
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          {/* Tier 3 — Beneficiary / Landowner Phone + Aadhaar Login Form */}
+          {/* Tier 3 — Beneficiary / Landowner Login Form */}
           {tier === 3 && (
-            <div className="p-6 max-w-md mx-auto">
+            <div className="p-6 sm:p-8 max-w-md mx-auto">
               <button
                 type="button"
                 onClick={goBack}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors mb-4 cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors mb-5 cursor-pointer"
               >
-                ← Back to Portal Selection
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Portal Selection
               </button>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-2xl">🏡</span>
-                <h3 className="text-base font-bold text-white">Landowner Access Portal</h3>
+                <h3 className="text-base font-bold text-slate-900">Landowner Access Portal</h3>
               </div>
-              <p className="text-xs text-slate-400 mb-5">
-                Enter the Mobile Number & Aadhaar Number recorded during official government land survey.
+              <p className="text-xs text-slate-500 mb-6">
+                Enter your Mobile Number & Aadhaar Number recorded during the official survey.
               </p>
 
               {loginErr && (
-                <div className="mb-4 p-3 rounded-xl border border-red-500/30 bg-red-950/40 text-red-300 text-xs font-medium">
-                  ⚠️ {loginErr}
+                <div className="mb-4 p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{loginErr}</span>
                 </div>
               )}
 
               <form onSubmit={handleBeneficiaryAuth} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Registered Mobile Number
                   </label>
                   <input
@@ -392,11 +349,11 @@ export default function PortalGateModal() {
                     placeholder="Enter 10-digit Phone Number"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Aadhaar Identification Number
                   </label>
                   <input
@@ -405,18 +362,14 @@ export default function PortalGateModal() {
                     placeholder="Enter 12-digit Aadhaar Number"
                     value={aadhaar}
                     onChange={(e) => setAadhaar(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 font-mono"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all cursor-pointer shadow-lg hover:scale-[1.01] active:scale-95"
-                  style={{
-                    background: 'linear-gradient(135deg, #ea580c, #d97706)',
-                    boxShadow: '0 0 20px rgba(234,88,12,0.3)',
-                  }}
+                  className="w-full py-2.5 mt-2 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer shadow-sm active:scale-[0.99]"
                 >
-                  Verify Credentials & Check Plot Notice Status →
+                  Verify Credentials & Check Compensation Status →
                 </button>
               </form>
             </div>
@@ -424,8 +377,8 @@ export default function PortalGateModal() {
         </div>
 
         {/* Footer */}
-        <p className="text-[10px] text-slate-600 text-center">
-          Smart India Hackathon 2026 · West Bengal Municipal Authority · Powered by Overpass OSM + Turf.js
+        <p className="text-xs text-slate-400 text-center">
+          Smart India Hackathon 2026 · West Bengal Municipal Authority
         </p>
       </div>
     </div>

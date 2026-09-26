@@ -255,10 +255,10 @@ export default function MapContainer() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="CartoDB Dark">
+          <LayersControl.BaseLayer name="CartoDB Light">
             <TileLayer
               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="Esri Satellite">
@@ -286,7 +286,7 @@ export default function MapContainer() {
         {polylineCoords.length >= 2 && (
           <Polyline
             positions={polylineCoords}
-            pathOptions={{ color: '#60a5fa', weight: 3, dashArray: '8 6', opacity: 0.9 }}
+            pathOptions={{ color: '#2563eb', weight: 3, dashArray: '8 6', opacity: 0.9 }}
           />
         )}
 
@@ -298,10 +298,10 @@ export default function MapContainer() {
             style={() => STYLE.buffer}
             onEachFeature={(_, layer) => {
               layer.bindPopup(
-                `<div style="font-size:12px;font-family:sans-serif">
-                  <strong style="color:#60a5fa">Infrastructure Corridor Alignment</strong>
-                  <div style="color:#94a3b8;margin-top:4px">Width: ${bufferWidthMeters} m</div>
-                  <div style="color:#34d399;font-weight:600;margin-top:2px">
+                `<div style="font-size:12px;font-family:sans-serif;padding:8px">
+                  <strong style="color:#2563eb">Infrastructure Corridor Alignment</strong>
+                  <div style="color:#64748b;margin-top:4px">Width: ${bufferWidthMeters} m</div>
+                  <div style="color:#059669;font-weight:600;margin-top:2px">
                     ${affectedPlots.length} plots · ${affectedBuildings.length} buildings hit
                   </div>
                 </div>`
@@ -328,11 +328,11 @@ export default function MapContainer() {
             icon={createVertexIcon(idx, points.length)}
           >
             <Popup>
-              <div style={{ fontSize: 11, fontFamily: 'sans-serif' }}>
+              <div style={{ fontSize: 11, fontFamily: 'sans-serif', padding: 8 }}>
                 <strong style={{ color: idx === 0 ? '#059669' : '#2563eb' }}>
                   Vertex P{idx + 1}
                 </strong>
-                <div style={{ fontFamily: 'monospace', color: '#94a3b8', marginTop: 2 }}>
+                <div style={{ fontFamily: 'monospace', color: '#64748b', marginTop: 2 }}>
                   {pt.lat.toFixed(5)}, {pt.lng.toFixed(5)}
                 </div>
                 <button
@@ -340,13 +340,14 @@ export default function MapContainer() {
                   onClick={() => removePoint(idx)}
                   style={{
                     marginTop: 6,
-                    padding: '2px 8px',
-                    fontSize: 10,
-                    borderRadius: 4,
-                    background: '#ef4444',
-                    color: '#fff',
-                    border: 'none',
-                    cursor: 'pointer'
+                    padding: '3px 8px',
+                    fontSize: 11,
+                    borderRadius: 6,
+                    background: '#fef2f2',
+                    color: '#b91c1c',
+                    border: '1px solid #fecaca',
+                    cursor: 'pointer',
+                    fontWeight: 600
                   }}
                 >
                   Delete Vertex
@@ -360,29 +361,29 @@ export default function MapContainer() {
       </LeafletMap>
 
       {/* Layer Legend (bottom-right) */}
-      <div className="absolute bottom-8 right-6 z-20 rounded-xl border border-slate-800 bg-slate-900/90 backdrop-blur-md p-3.5 shadow-xl shadow-black/40 text-xs">
-        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-          <Layers className="w-3 h-3" /> Layer Legend
+      <div className="absolute bottom-8 right-6 z-20 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-sm p-3.5 shadow-md text-xs text-slate-800">
+        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+          <Layers className="w-3.5 h-3.5 text-blue-600" /> Layer Legend
         </div>
         <div className="space-y-1.5">
           {[
             { color: '#10b981', label: 'Land Plot (Unaffected)' },
             { color: '#FF4136', label: 'Land Plot (Affected — Red)' },
-            { color: '#6b7280', label: 'Building Footprint (Unaffected)' },
-            { color: '#FFD700', label: 'Building Footprint (Affected — Yellow)' },
-            { color: '#3b82f6', opacity: 0.5, label: 'Corridor Buffer' }
+            { color: '#94a3b8', label: 'Building Footprint (Unaffected)' },
+            { color: '#F59E0B', label: 'Building Footprint (Affected — Amber)' },
+            { color: '#3b82f6', opacity: 0.35, label: 'Corridor Buffer' }
           ].map(({ color, opacity = 1, label }) => (
-            <div key={label} className="flex items-center gap-2 text-slate-300">
-              <span className="w-4 h-3.5 rounded-sm shrink-0" style={{ background: color, opacity }} />
-              {label}
+            <div key={label} className="flex items-center gap-2 text-slate-700">
+              <span className="w-3.5 h-3 rounded-xs shrink-0" style={{ background: color, opacity }} />
+              <span>{label}</span>
             </div>
           ))}
-          <div className="flex items-center gap-3 pt-1.5 border-t border-slate-800 text-[10px] text-slate-400">
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> P1 Start
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" /> P1 Start
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-teal-500 inline-block" /> Pn Vertices
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" /> Pn Vertices
             </span>
           </div>
         </div>

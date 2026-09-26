@@ -48,59 +48,56 @@ export function isProjectOwnedByUser(project, userProfile) {
   if (userProfile.id && creatorId === userProfile.id) return true;
   if (userEmail && creator.includes(userEmail)) return true;
   if (userName && creator.includes(userName)) return true;
-  // If legacy demo default project and user is default officer persona
   if ((!creator || creator === 'municipal officer') && (userEmail === 'officer@bhoomi.gov.in' || userName?.includes('priya'))) return true;
   return false;
 }
 
 // ─── Shared badge & icon helpers ──────────────────────────────────────────────
 const CAT_STYLE = {
-  Commercial:   { bg: 'rgba(168,85,247,.18)',  color: '#c084fc', Icon: Building2 },
-  Agricultural: { bg: 'rgba(245,158,11,.18)',  color: '#fbbf24', Icon: Trees },
-  Residential:  { bg: 'rgba(59,130,246,.18)',  color: '#93c5fd', Icon: Home },
+  Commercial:   { className: 'bg-purple-50 text-purple-700 border border-purple-200/60', Icon: Building2 },
+  Agricultural: { className: 'bg-amber-50 text-amber-700 border border-amber-200/60',   Icon: Trees },
+  Residential:  { className: 'bg-blue-50 text-blue-700 border border-blue-200/60',      Icon: Home },
 };
+
 function CatBadge({ cat }) {
   const s = CAT_STYLE[cat] || CAT_STYLE.Residential;
   const { Icon } = s;
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: s.bg, color: s.color }}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${s.className}`}>
       <Icon className="w-2.5 h-2.5" />{cat || 'Residential'}
     </span>
   );
 }
 
 const DISBURSE_STYLE = {
-  Disbursed:  { color: '#34d399', bg: 'rgba(52,211,153,.15)',  border: 'rgba(52,211,153,.3)' },
-  Processing: { color: '#38bdf8', bg: 'rgba(56,189,248,.15)', border: 'rgba(56,189,248,.3)' },
-  Stalled:    { color: '#f87171', bg: 'rgba(248,113,113,.15)', border: 'rgba(248,113,113,.3)' },
+  Disbursed:  { className: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' },
+  Processing: { className: 'bg-blue-50 text-blue-700 border border-blue-200/60' },
+  Stalled:    { className: 'bg-rose-50 text-rose-700 border border-rose-200/60' },
 };
 
 // ─── Officer status styling ───────────────────────────────────────────────────
 const OFFICER_STATUS_STYLE = {
-  Approved:      { color: '#34d399', bg: 'rgba(52,211,153,.18)',  border: 'rgba(52,211,153,.4)',  pdfBg: '#dcfce7', pdfColor: '#166534' },
-  'Under Review':{ color: '#fb923c', bg: 'rgba(251,146,60,.18)',  border: 'rgba(251,146,60,.4)',  pdfBg: '#fff7ed', pdfColor: '#9a3412' },
-  Rejected:      { color: '#f87171', bg: 'rgba(248,113,113,.18)', border: 'rgba(248,113,113,.4)', pdfBg: '#fef2f2', pdfColor: '#991b1b' },
+  Approved:      { className: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60', label: 'Approved', icon: '✅' },
+  'Under Review':{ className: 'bg-amber-50 text-amber-700 border border-amber-200/60',       label: 'Under Review', icon: '🔄' },
+  Rejected:      { className: 'bg-rose-50 text-rose-700 border border-rose-200/60',         label: 'Rejected', icon: '❌' },
 };
 
 // ─── Branch back-button header ────────────────────────────────────────────────
-function BranchHeader({ title, subtitle, icon: Icon, onBack, accentColor = '#10b981' }) {
+function BranchHeader({ title, subtitle, icon: Icon, onBack, accentColor = '#2563eb' }) {
   return (
-    <div
-      className="h-12 px-4 flex items-center gap-3 border-b border-slate-800 shrink-0"
-      style={{ background: 'rgba(9,13,27,0.98)' }}
-    >
+    <div className="h-14 px-5 flex items-center gap-3 border-b border-slate-200 bg-white shrink-0 shadow-sm">
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer mr-1"
+        className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer mr-1"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Command Hub
       </button>
-      <div className="w-px h-5 bg-slate-700" />
-      <Icon className="w-4 h-4 shrink-0" style={{ color: accentColor }} />
+      <div className="w-px h-5 bg-slate-200" />
+      <Icon className="w-4 h-4 shrink-0 text-blue-600" />
       <div>
-        <div className="text-sm font-bold text-white">{title}</div>
-        {subtitle && <div className="text-[10px] text-slate-400">{subtitle}</div>}
+        <div className="text-sm font-bold text-slate-900">{title}</div>
+        {subtitle && <div className="text-xs text-slate-500">{subtitle}</div>}
       </div>
     </div>
   );
@@ -129,11 +126,11 @@ function DocumentViewerModal({ doc, onClose }) {
         <html>
           <head>
             <title>${doc.title} — ${doc.task?.plotId || ''}</title>
-            <style>body { margin: 0; background: #0b0f19; display: flex; justify-content: center; align-items: center; height: 100vh; }</style>
+            <style>body { margin: 0; background: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; }</style>
           </head>
           <body>
             ${isBase64Img 
-              ? `<img src="${doc.url}" style="max-height: 96vh; max-width: 96vw; object-contain; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.8);" />` 
+              ? `<img src="${doc.url}" style="max-height: 96vh; max-width: 96vw; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />` 
               : `<iframe src="${doc.url}" style="width: 100vw; height: 100vh; border: none;"></iframe>`
             }
           </body>
@@ -145,30 +142,22 @@ function DocumentViewerModal({ doc, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        background: 'radial-gradient(ellipse at center, rgba(2,8,23,0.88) 0%, rgba(0,0,0,0.95) 100%)',
-        backdropFilter: 'blur(10px)',
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl rounded-2xl border border-slate-700 overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
-        style={{ background: 'rgba(15,23,42,0.98)' }}
+        className="relative w-full max-w-4xl rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
-              style={{ background: doc.type === 'photo' ? 'rgba(56,189,248,.15)' : 'rgba(52,211,153,.15)' }}
-            >
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-base">
               {doc.type === 'photo' ? '📷' : '📄'}
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white leading-snug">{doc.title}</h3>
-              <p className="text-[11px] text-slate-400 font-mono">
+              <h3 className="text-sm font-bold text-slate-900 leading-snug">{doc.title}</h3>
+              <p className="text-xs text-slate-500 font-mono">
                 {doc.task?.plotId ? `Plot: ${doc.task.plotId}` : ''} {doc.task?.khasraNo ? `· Khasra: ${doc.task.khasraNo}` : ''} {doc.name ? `· ${doc.name}` : ''}
               </p>
             </div>
@@ -178,7 +167,7 @@ function DocumentViewerModal({ doc, onClose }) {
               <button
                 type="button"
                 onClick={handleOpenFullscreen}
-                className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg text-sky-400 bg-sky-950/60 hover:bg-sky-900 transition-colors border border-sky-500/30 cursor-pointer"
+                className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer"
                 title="Open in new window"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Full Tab ↗
@@ -187,7 +176,7 @@ function DocumentViewerModal({ doc, onClose }) {
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -195,70 +184,70 @@ function DocumentViewerModal({ doc, onClose }) {
         </div>
 
         {/* Modal Content */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center min-h-[400px] bg-slate-950/60">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center min-h-[400px] bg-slate-50">
           {isBase64Img ? (
             <div className="w-full flex flex-col items-center justify-center p-2">
               <img
                 src={doc.url}
                 alt={doc.title}
-                className="max-h-[68vh] max-w-full rounded-xl object-contain border border-slate-800 shadow-2xl"
+                className="max-h-[68vh] max-w-full rounded-xl object-contain border border-slate-200 shadow-sm"
               />
             </div>
           ) : isBase64Pdf ? (
             <iframe
               src={doc.url}
               title={doc.title}
-              className="w-full h-[68vh] rounded-xl border border-slate-800 bg-slate-900"
+              className="w-full h-[68vh] rounded-xl border border-slate-200 bg-white"
             />
           ) : isRealUrl ? (
             <div className="w-full h-[68vh]">
               {doc.type === 'photo' ? (
                 <img src={doc.url} alt={doc.title} className="max-h-full max-w-full rounded-xl object-contain mx-auto" />
               ) : (
-                <iframe src={doc.url} title={doc.title} className="w-full h-full rounded-xl border border-slate-800" />
+                <iframe src={doc.url} title={doc.title} className="w-full h-full rounded-xl border border-slate-200" />
               )}
             </div>
           ) : (
             /* Digital Certified Document Verification Preview */
-            <div className="w-full max-w-xl p-6 rounded-2xl border border-emerald-500/20 bg-slate-900/80 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+            <div className="w-full max-w-xl p-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <FileCheck className="w-5 h-5 text-emerald-400" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Government Field Survey Evidence</span>
+                  <FileCheck className="w-5 h-5 text-emerald-600" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Government Field Survey Evidence</span>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-semibold">
                   SEAL VERIFIED
                 </span>
               </div>
 
-              <div className="space-y-2.5 text-xs text-slate-300">
-                <div className="flex justify-between py-1 border-b border-slate-800/60">
-                  <span className="text-slate-400">Document Type:</span>
-                  <span className="font-semibold text-white">{doc.title}</span>
+              <div className="space-y-2.5 text-xs text-slate-700">
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Document Type:</span>
+                  <span className="font-semibold text-slate-900">{doc.title}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-800/60">
-                  <span className="text-slate-400">File Name:</span>
-                  <span className="font-mono text-sky-300">{doc.name || 'Uploaded_Document.pdf'}</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">File Name:</span>
+                  <span className="font-mono text-blue-600">{doc.name || 'Uploaded_Document.pdf'}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-800/60">
-                  <span className="text-slate-400">Parcel ID:</span>
-                  <span className="font-mono text-white font-bold">{doc.task?.plotId}</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Parcel ID:</span>
+                  <span className="font-mono text-slate-900 font-bold">{doc.task?.plotId}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-800/60">
-                  <span className="text-slate-400">Khasra / Dag No:</span>
-                  <span className="font-mono text-amber-300 font-bold">{doc.task?.khasraNo || 'Verified On-site'}</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Khasra / Dag No:</span>
+                  <span className="font-mono text-amber-700 font-bold">{doc.task?.khasraNo || 'Verified On-site'}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-800/60">
-                  <span className="text-slate-400">Recorded Owner:</span>
-                  <span className="text-white font-semibold">{doc.task?.surveyorOwnerName || doc.task?.ownerName || 'Verified Citizen'}</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Recorded Owner:</span>
+                  <span className="text-slate-900 font-semibold">{doc.task?.surveyorOwnerName || doc.task?.ownerName || 'Verified Citizen'}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-800/60">
-                  <span className="text-slate-400">Location Classification:</span>
-                  <span className="text-sky-300 font-semibold">{doc.task?.verifiedLandClass || doc.task?.landCategory} ({(doc.task?.zoneType === 'RURAL' || doc.task?.isRural) ? 'RURAL' : 'URBAN'})</span>
+                <div className="flex justify-between py-1 border-b border-slate-100">
+                  <span className="text-slate-500">Location Classification:</span>
+                  <span className="text-blue-700 font-semibold">{doc.task?.verifiedLandClass || doc.task?.landCategory} ({(doc.task?.zoneType === 'RURAL' || doc.task?.isRural) ? 'RURAL' : 'URBAN'})</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-400">Digital Checksum:</span>
-                  <span className="font-mono text-[10px] text-slate-500">SHA256: 8f9b...a10c-verified</span>
+                  <span className="text-slate-500">Digital Checksum:</span>
+                  <span className="font-mono text-[11px] text-slate-400">SHA256: 8f9b...a10c-verified</span>
                 </div>
               </div>
             </div>
@@ -266,9 +255,9 @@ function DocumentViewerModal({ doc, onClose }) {
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between bg-slate-900/90 text-xs">
-          <div className="text-slate-400 text-[11px] flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+        <div className="px-5 py-3.5 border-t border-slate-200 flex items-center justify-between bg-white text-xs">
+          <div className="text-slate-500 text-xs flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             Authenticated against West Bengal Municipal Land Registry
           </div>
           <div className="flex items-center gap-2">
@@ -278,7 +267,7 @@ function DocumentViewerModal({ doc, onClose }) {
                 download={doc.name || 'document'}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer border border-slate-700"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer border border-slate-200"
               >
                 <Download className="w-3.5 h-3.5" /> Download
               </a>
@@ -286,7 +275,7 @@ function DocumentViewerModal({ doc, onClose }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 rounded-lg font-bold text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+              className="px-4 py-1.5 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
             >
               Close
             </button>
@@ -346,14 +335,12 @@ function CommandHub({ onBranch, userProfile }) {
     setIsDeleting(true);
     const pid = p.project_id || p.projectId;
     
-    // 0ms Optimistic in-memory update
     setAllProjects((prev) => prev.filter((proj) => (proj.project_id || proj.projectId) !== pid));
     setAllTasks((prev) => prev.filter((t) => t.projectId !== pid));
     setProjectToDelete(null);
     setIsDeleting(false);
     showToast(`🗑️ Project ${pid} ("${p.project_name}") deleted from database.`, 'info');
 
-    // Background cloud deletion
     await dataService.deleteProject(pid);
   };
 
@@ -363,74 +350,53 @@ function CommandHub({ onBranch, userProfile }) {
       icon: '➕',
       title: 'Create New Project',
       subtitle: 'Launch GIS corridor builder, draw alignment, dispatch survey tasks',
-      accent: '#10b981',
-      bg: 'linear-gradient(135deg, rgba(16,185,129,.1) 0%, rgba(13,148,136,.06) 100%)',
-      border: 'rgba(16,185,129,.28)',
-      glow: 'rgba(16,185,129,.12)',
       tag: 'GIS CANVAS',
-      tagColor: '#34d399',
-      tagBg: 'rgba(16,185,129,.15)',
+      tagClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
     },
     {
       id: 'reports',
       icon: '📋',
       title: 'Surveyor Report Status',
       subtitle: 'Review field-submitted documents, add officer remarks, export PDF',
-      accent: '#38bdf8',
-      bg: 'linear-gradient(135deg, rgba(56,189,248,.1) 0%, rgba(99,102,241,.06) 100%)',
-      border: 'rgba(56,189,248,.28)',
-      glow: 'rgba(56,189,248,.12)',
       tag: 'REPORTS',
-      tagColor: '#7dd3fc',
-      tagBg: 'rgba(56,189,248,.15)',
+      tagClass: 'bg-blue-50 text-blue-700 border border-blue-200/60',
     },
     {
       id: 'transactions',
       icon: '💳',
       title: 'Transaction Status',
       subtitle: 'Financial audit table, disbursement tracker, payment simulation',
-      accent: '#fb923c',
-      bg: 'linear-gradient(135deg, rgba(251,146,60,.1) 0%, rgba(234,179,8,.06) 100%)',
-      border: 'rgba(251,146,60,.28)',
-      glow: 'rgba(251,146,60,.12)',
       tag: 'FINANCE',
-      tagColor: '#fdba74',
-      tagBg: 'rgba(251,146,60,.15)',
+      tagClass: 'bg-amber-50 text-amber-700 border border-amber-200/60',
     },
   ];
 
   return (
-    <div
-      className="flex-1 overflow-y-auto"
-      style={{ background: 'radial-gradient(ellipse at 30% 0%, rgba(16,185,129,.05) 0%, transparent 60%), #030712' }}
-    >
-      <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="flex-1 overflow-y-auto bg-slate-50 min-h-screen">
+      <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Welcome header & Scope toggle */}
-        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl"
-              style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.25)' }}
-            >
-              🗺️
+        <div className="mb-6 p-5 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-xl shrink-0">
+              🏛️
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white">
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
                 Welcome, {userProfile?.name?.split(' ')[0] || 'Officer'}
               </h1>
-              <p className="text-sm text-slate-400">{userProfile?.designation || 'Municipal Planning Officer'}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{userProfile?.designation || 'Municipal Planning Officer'}</p>
             </div>
           </div>
 
           {/* Project Workspace Scope Switcher */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800 shadow-inner">
+          <div className="flex items-center gap-1.5 p-1 rounded-lg bg-slate-100 border border-slate-200">
             <button
               type="button"
               onClick={() => setScopeFilter('my')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                 scopeFilter === 'my'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-blue-700 shadow-sm border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span>👤</span> My Projects ({myProjects.length})
@@ -438,10 +404,10 @@ function CommandHub({ onBranch, userProfile }) {
             <button
               type="button"
               onClick={() => setScopeFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                 scopeFilter === 'all'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-white text-blue-700 shadow-sm border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span>🏢</span> All Department ({allProjects.length})
@@ -449,52 +415,24 @@ function CommandHub({ onBranch, userProfile }) {
           </div>
         </div>
 
-        {/* Quick stats strip - Only My Projects */}
-        <div className="mb-8 max-w-xs">
-          <div
-            className="p-4 rounded-2xl border flex items-center gap-4 shadow-sm"
-            style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(16,185,129,.25)' }}
-          >
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              <FolderOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-2xl font-black text-emerald-400">{stats.projects}</div>
-              <div className="text-xs text-slate-400 font-medium">
-                {scopeFilter === 'my' ? 'My Projects' : 'Total Projects'}
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* 3 Action cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {HUB_CARDS.map((card) => (
             <button
               key={card.id}
               type="button"
               onClick={() => onBranch(card.id)}
-              className="group text-left p-6 rounded-2xl border transition-all duration-200 cursor-pointer"
-              style={{
-                background: card.bg,
-                border: `1px solid ${card.border}`,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 32px ${card.glow}`; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              className="group text-left p-6 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer"
             >
-              <div className="text-4xl mb-4">{card.icon}</div>
+              <div className="text-3xl mb-3">{card.icon}</div>
               <span
-                className="inline-block text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded mb-3"
-                style={{ background: card.tagBg, color: card.tagColor }}
+                className={`inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mb-3 ${card.tagClass}`}
               >
                 {card.tag}
               </span>
-              <h3 className="text-base font-bold text-white mb-2 leading-snug">{card.title}</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">{card.subtitle}</p>
-              <div
-                className="mt-4 text-xs font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform"
-                style={{ color: card.accent }}
-              >
+              <h3 className="text-base font-bold text-slate-900 mb-1.5 leading-snug">{card.title}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">{card.subtitle}</p>
+              <div className="mt-4 text-xs font-semibold text-blue-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                 Open →
               </div>
             </button>
@@ -502,28 +440,28 @@ function CommandHub({ onBranch, userProfile }) {
         </div>
 
         {/* Projects Registry / Portfolio (List View) */}
-        <div className="border-t border-slate-800/80 pt-8">
+        <div className="pt-2">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 text-emerald-400" />
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-blue-600" />
                 {scopeFilter === 'my' ? 'My Projects Portfolio' : 'All Department Projects Registry'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {scopeFilter === 'my'
                   ? 'Infrastructure corridor projects created and managed by your account'
                   : 'All land acquisition projects across all municipal officers'}
               </p>
             </div>
-            <span className="text-xs font-mono text-slate-300 bg-slate-900 px-3 py-1 rounded-xl border border-slate-800 font-semibold">
+            <span className="text-xs font-mono text-slate-700 bg-white px-3 py-1 rounded-lg border border-slate-200 font-semibold shadow-sm">
               {scopedProjects.length} Project{scopedProjects.length !== 1 ? 's' : ''}
             </span>
           </div>
 
           {scopedProjects.length === 0 ? (
-            <div className="p-10 rounded-2xl border border-slate-800/80 bg-slate-900/40 text-center text-slate-400">
-              <FolderOpen className="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-60" />
-              <p className="text-sm font-semibold text-slate-200">No projects found in this view</p>
+            <div className="p-10 rounded-xl border border-slate-200 bg-white text-center text-slate-500 shadow-sm">
+              <FolderOpen className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+              <p className="text-sm font-semibold text-slate-800">No projects found in this view</p>
               <p className="text-xs text-slate-500 mt-1">Click "Create New Project" above to launch the GIS corridor builder.</p>
             </div>
           ) : (
@@ -532,50 +470,49 @@ function CommandHub({ onBranch, userProfile }) {
                 const pTasks = allTasks.filter((t) => t.projectId === p.project_id);
                 const approvedCount = pTasks.filter((t) => t.officerStatus === 'Approved').length;
                 const completedCount = pTasks.filter((t) => t.status === 'Completed').length;
-                const statusColor = p.status === 'APPROVED' ? '#34d399' : p.status === 'UNDER_REVIEW' ? '#fb923c' : '#fbbf24';
                 const isOwner = isProjectOwnedByUser(p, userProfile);
+
+                const statusBadgeClass =
+                  p.status === 'APPROVED' || p.status === 'CLOSED' || p.status === 'COMPLETED'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                    : p.status === 'UNDER_REVIEW'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200/60'
+                    : 'bg-blue-50 text-blue-700 border-blue-200/60';
 
                 return (
                   <div
                     key={p.project_id}
-                    className="p-4 sm:p-5 rounded-2xl border bg-slate-900/70 border-slate-800/80 hover:border-slate-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg"
+                    className="p-5 rounded-xl border border-slate-200 bg-white hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm"
                   >
                     {/* Left: Project identity & metadata */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                        <span className="text-xs font-bold font-mono px-2 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-500/30">
+                        <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
                           {p.project_id}
                         </span>
-                        <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                          style={{
-                            background: `${statusColor}18`,
-                            color: statusColor,
-                            border: `1px solid ${statusColor}40`,
-                          }}
-                        >
+                        <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${statusBadgeClass}`}>
                           {p.status || 'PENDING'}
                         </span>
                         {isOwner && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
                             👤 Your Project
                           </span>
                         )}
                       </div>
 
                       {/* Project Name */}
-                      <h3 className="text-base font-bold text-white mb-1 leading-snug truncate">{p.project_name}</h3>
+                      <h3 className="text-base font-bold text-slate-900 mb-1 leading-snug truncate">{p.project_name}</h3>
 
                       {/* Creator and Date */}
-                      <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+                      <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
                         <span>
-                          <span className="text-slate-500">Officer:</span>{' '}
-                          <span className="text-slate-300 font-medium">{p.created_by_name || p.created_by || 'Municipal Officer'}</span>
+                          <span className="text-slate-400">Officer:</span>{' '}
+                          <span className="text-slate-700 font-medium">{p.created_by_name || p.created_by || 'Municipal Officer'}</span>
                         </span>
-                        <span className="text-slate-600">·</span>
+                        <span className="text-slate-300">·</span>
                         <span>
-                          <span className="text-slate-500">Date:</span>{' '}
-                          <span className="font-mono text-slate-300">
+                          <span className="text-slate-400">Date:</span>{' '}
+                          <span className="font-mono text-slate-700">
                             {new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </span>
                         </span>
@@ -583,20 +520,20 @@ function CommandHub({ onBranch, userProfile }) {
                     </div>
 
                     {/* Middle: Mini Metrics */}
-                    <div className="flex items-center gap-2 sm:gap-3 bg-slate-950/80 border border-slate-800/80 px-3.5 py-2 rounded-xl text-center shrink-0">
+                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-lg text-center shrink-0">
                       <div className="px-2">
-                        <div className="text-[9px] text-slate-500 uppercase font-bold">Plots</div>
-                        <div className="text-xs font-bold text-sky-400 font-mono">{pTasks.length}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-semibold">Plots</div>
+                        <div className="text-xs font-bold text-slate-900 font-mono">{pTasks.length}</div>
                       </div>
-                      <div className="w-[1px] h-6 bg-slate-800" />
+                      <div className="w-[1px] h-6 bg-slate-200" />
                       <div className="px-2">
-                        <div className="text-[9px] text-slate-500 uppercase font-bold">Surveyed</div>
-                        <div className="text-xs font-bold text-amber-400 font-mono">{completedCount}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-semibold">Surveyed</div>
+                        <div className="text-xs font-bold text-blue-600 font-mono">{completedCount}</div>
                       </div>
-                      <div className="w-[1px] h-6 bg-slate-800" />
+                      <div className="w-[1px] h-6 bg-slate-200" />
                       <div className="px-2">
-                        <div className="text-[9px] text-slate-500 uppercase font-bold">Approved</div>
-                        <div className="text-xs font-bold text-emerald-400 font-mono">{approvedCount}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-semibold">Approved</div>
+                        <div className="text-xs font-bold text-emerald-600 font-mono">{approvedCount}</div>
                       </div>
                     </div>
 
@@ -605,25 +542,24 @@ function CommandHub({ onBranch, userProfile }) {
                       <button
                         type="button"
                         onClick={() => onBranch('reports')}
-                        className="py-2 px-3 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs font-semibold text-center border border-sky-500/30 transition-all cursor-pointer whitespace-nowrap"
+                        className="py-2 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold text-center border border-blue-200/60 transition-all cursor-pointer whitespace-nowrap"
                       >
                         Surveyor Reports →
                       </button>
                       <button
                         type="button"
                         onClick={() => onBranch('transactions')}
-                        className="py-2 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-300 text-xs font-semibold text-center border border-orange-500/30 transition-all cursor-pointer whitespace-nowrap"
+                        className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold text-center border border-slate-200 transition-all cursor-pointer whitespace-nowrap"
                       >
                         Financials →
                       </button>
 
-                      {/* Delete Button ONLY visible for the project owner */}
                       {isOwner && (
                         <button
                           type="button"
                           onClick={() => setProjectToDelete(p)}
                           title="Delete Your Project from Database"
-                          className="p-2 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all cursor-pointer shrink-0"
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer shrink-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -639,31 +575,31 @@ function CommandHub({ onBranch, userProfile }) {
 
       {/* Delete Confirmation Modal */}
       {projectToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md p-6 rounded-2xl border border-red-500/30 bg-slate-900 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-red-400">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-xl">
-                <Trash2 className="w-5 h-5 text-red-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md p-6 rounded-xl border border-slate-200 bg-white shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-xl shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Delete Project</h3>
-                <p className="text-xs text-slate-400">Permanent database deletion</p>
+                <h3 className="text-base font-bold text-slate-900">Delete Project</h3>
+                <p className="text-xs text-slate-500">Permanent database deletion</p>
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete <strong className="text-white">"{projectToDelete.project_name}"</strong> (<span className="font-mono text-sky-300">{projectToDelete.project_id}</span>)?
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-slate-900">"{projectToDelete.project_name}"</strong> (<span className="font-mono text-blue-600">{projectToDelete.project_id}</span>)?
             </p>
-            <p className="text-[11px] text-red-300/80 bg-red-950/40 p-2.5 rounded-xl border border-red-500/20">
+            <p className="text-xs text-rose-700 bg-rose-50 p-2.5 rounded-lg border border-rose-200">
               ⚠️ This will delete the project record and all associated survey plot tasks and documents from the Supabase database.
             </p>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setProjectToDelete(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -671,7 +607,7 @@ function CommandHub({ onBranch, userProfile }) {
                 type="button"
                 onClick={() => handleDeleteProject(projectToDelete)}
                 disabled={isDeleting}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 {isDeleting ? 'Deleting…' : 'Delete Project'}
@@ -745,7 +681,6 @@ function GISBranch({ onBack, userProfile }) {
           dispatchedBy: userProfile?.name || userProfile?.email || 'Municipal Officer',
           dispatchedByEmail: userProfile?.email || '',
           dispatchedAt: now,
-          // Fields filled by surveyor later
           surveyorOwnerName: '',
           surveyorPhone: '',
           surveyorAadhaar: '',
@@ -762,7 +697,6 @@ function GISBranch({ onBack, userProfile }) {
       });
 
     saveTasks([...existing, ...newTasks]);
-    // Create project record with default base rates
     const projects = loadProjects();
     const newProject = {
       project_id: pid,
@@ -786,13 +720,13 @@ function GISBranch({ onBack, userProfile }) {
   }, [projectName, baseRates, affectedPlots, affectedBuildings, userProfile, showToast]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
       <BranchHeader
         title="Create New Project"
         subtitle="Draw corridor alignment → dispatch plots to surveyors"
         icon={PlusCircle}
         onBack={onBack}
-        accentColor="#10b981"
+        accentColor="#2563eb"
       />
       <div className="flex-1 relative overflow-hidden">
         <MapContainer />
@@ -800,51 +734,48 @@ function GISBranch({ onBack, userProfile }) {
         <FeatureDetailModal />
 
         {/* Project name + base rates + send bar */}
-        <div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col gap-2 p-4 rounded-2xl border shadow-2xl"
-          style={{ background: 'rgba(9,13,27,0.97)', border: '1px solid rgba(16,185,129,.25)', backdropFilter: 'blur(12px)', minWidth: 680 }}
-        >
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col gap-2.5 p-4 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-xl min-w-[700px]">
           <div className="flex items-center gap-3">
             <div className="flex flex-col gap-0.5 shrink-0">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Project Name *</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Project Name *</label>
               <input
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g. NH-34 Widening Phase 1"
-                className="w-56 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-56 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-all"
               />
             </div>
 
-            <div className="w-px h-10 bg-slate-700" />
+            <div className="w-px h-10 bg-slate-200" />
 
             {/* Base Circle Rates Inputs */}
             <div className="flex items-center gap-2 flex-1">
               <div>
-                <label className="text-[9px] font-bold uppercase tracking-wider text-sky-400 block mb-0.5">Res. Rate (₹/m²)</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 block mb-0.5">Res. Rate (₹/m²)</label>
                 <input
                   type="number"
                   value={baseRates.Residential}
                   onChange={(e) => setBaseRates({ ...baseRates, Residential: e.target.value })}
-                  className="w-24 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-white"
+                  className="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
                 />
               </div>
               <div>
-                <label className="text-[9px] font-bold uppercase tracking-wider text-purple-400 block mb-0.5">Comm. Rate (₹/m²)</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-purple-600 block mb-0.5">Comm. Rate (₹/m²)</label>
                 <input
                   type="number"
                   value={baseRates.Commercial}
                   onChange={(e) => setBaseRates({ ...baseRates, Commercial: e.target.value })}
-                  className="w-24 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-white"
+                  className="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
                 />
               </div>
               <div>
-                <label className="text-[9px] font-bold uppercase tracking-wider text-amber-400 block mb-0.5">Agri. Rate (₹/m²)</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 block mb-0.5">Agri. Rate (₹/m²)</label>
                 <input
                   type="number"
                   value={baseRates.Agricultural}
                   onChange={(e) => setBaseRates({ ...baseRates, Agricultural: e.target.value })}
-                  className="w-24 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-white"
+                  className="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
                 />
               </div>
             </div>
@@ -853,24 +784,23 @@ function GISBranch({ onBack, userProfile }) {
               type="button"
               onClick={handleSendAll}
               disabled={!canSend}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105 active:scale-95 shrink-0"
-              style={{ background: 'linear-gradient(135deg,#059669,#0d9488)', color: '#fff', boxShadow: canSend ? '0 0 16px rgba(16,185,129,.4)' : 'none' }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0"
             >
               <Send className="w-3.5 h-3.5" />
               Send for Surveying
             </button>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/80">
+          <div className="flex items-center justify-between text-xs text-slate-500 pt-1.5 border-t border-slate-100">
             <span className="flex items-center gap-1.5">
-              <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-              <span className="font-bold text-white">{totalAffected}</span> parcels in corridor
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="font-bold text-slate-900">{totalAffected}</span> parcels in corridor
               {dispatchedIds.size > 0 && (
-                <span className="ml-1 text-emerald-400 font-semibold">· {dispatchedIds.size} dispatched</span>
+                <span className="ml-1 text-emerald-600 font-semibold">· {dispatchedIds.size} dispatched</span>
               )}
             </span>
             {lastProjectId && (
-              <span className="font-mono text-emerald-400">
+              <span className="font-mono text-emerald-600 font-semibold">
                 ✓ Dispatched: {lastProjectId}
               </span>
             )}
@@ -887,7 +817,7 @@ function GISBranch({ onBack, userProfile }) {
 function ReportsBranch({ onBack, userProfile }) {
   const { showToast } = useGIS();
   const [allProjects, setAllProjects] = useState(loadProjects);
-  const [scopeFilter, setScopeFilter] = useState('my'); // 'my' | 'all'
+  const [scopeFilter, setScopeFilter] = useState('my');
   const myProjects = useMemo(() => allProjects.filter((p) => isProjectOwnedByUser(p, userProfile)), [allProjects, userProfile]);
   const scopedProjects = scopeFilter === 'my' && myProjects.length > 0 ? myProjects : allProjects;
   const [selectedProjId, setSelectedProjId] = useState(() => (myProjects[0] || loadProjects()[0])?.project_id || '');
@@ -918,7 +848,7 @@ function ReportsBranch({ onBack, userProfile }) {
     });
     return unsub;
   }, [refreshReports]);
-  // Separated local draft states for remarks
+
   const [officerRemarkDrafts, setOfficerRemarkDrafts] = useState(() => {
     const d = {};
     loadTasks().forEach((t) => { d[t.id] = t.officerRemarks || ''; });
@@ -930,10 +860,8 @@ function ReportsBranch({ onBack, userProfile }) {
     return d;
   });
 
-  // Debounce ref for background persistence without UI blocking
   const debounceTimers = useRef({});
 
-  // Per-plot circle rate overrides draft state keyed by task.id
   const [circleRates, setCircleRates] = useState(() => {
     const r = {};
     loadTasks().forEach((t) => {
@@ -945,7 +873,6 @@ function ReportsBranch({ onBack, userProfile }) {
     return r;
   });
 
-  // Per-plot zone overrides draft state keyed by task.id ('URBAN' | 'RURAL')
   const [zoneOverrides, setZoneOverrides] = useState(() => {
     const z = {};
     loadTasks().forEach((t) => {
@@ -981,7 +908,6 @@ function ReportsBranch({ onBack, userProfile }) {
     showToast(`🧮 LARR Compensation Calculated for Plot ${task.plotId}: ₹${financials.totalAward.toLocaleString('en-IN')} (${financials.multiplier}× Multiplier)`, 'success');
   }, [circleRates, zoneOverrides, showToast]);
 
-  // Handle Official Report Remarks (Printed on PDF) with 0ms UI responsiveness + debounced cloud sync
   const handleOfficerRemarkChange = useCallback((taskId, val) => {
     setOfficerRemarkDrafts((prev) => ({ ...prev, [taskId]: val }));
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, officerRemarks: val } : t)));
@@ -992,7 +918,6 @@ function ReportsBranch({ onBack, userProfile }) {
     }, 450);
   }, []);
 
-  // Handle Review Instructions for Field Surveyor with 0ms UI responsiveness + debounced cloud sync
   const handleReviewRemarkChange = useCallback((taskId, val) => {
     setReviewRemarkDrafts((prev) => ({ ...prev, [taskId]: val }));
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, reviewRemarks: val } : t)));
@@ -1003,12 +928,10 @@ function ReportsBranch({ onBack, userProfile }) {
     }, 450);
   }, []);
 
-  // Instantaneous 0ms Officer decision action handler (Optimistic UI + Background Cloud Sync)
   const handleOfficerAction = useCallback((taskId, newOfficerStatus) => {
     const currentRevRem = reviewRemarkDrafts[taskId] !== undefined ? reviewRemarkDrafts[taskId] : (tasks.find((t) => t.id === taskId)?.reviewRemarks || '');
     const currentOffRem = officerRemarkDrafts[taskId] !== undefined ? officerRemarkDrafts[taskId] : (tasks.find((t) => t.id === taskId)?.officerRemarks || '');
 
-    // 1. Instant 0ms Optimistic UI update (ring border & status badge reflect immediately!)
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== taskId) return t;
@@ -1024,7 +947,6 @@ function ReportsBranch({ onBack, userProfile }) {
     const labels = { Approved: '✅ Approved', 'Under Review': '🔄 Sent for Review', Rejected: '❌ Rejected' };
     showToast(`Plot ${taskId.slice(-6)} — ${labels[newOfficerStatus]}`, newOfficerStatus === 'Approved' ? 'success' : 'info');
 
-    // 2. Non-blocking Background Async Cloud Sync
     (async () => {
       await dataService.updateTask(taskId, {
         officerStatus: newOfficerStatus,
@@ -1061,21 +983,20 @@ function ReportsBranch({ onBack, userProfile }) {
       });
   }, [tasks, selectedProjId, search]);
 
-  // Stats
   const approvedCount    = projTasks.filter((t) => t.officerStatus === 'Approved').length;
   const reviewCount      = projTasks.filter((t) => t.officerStatus === 'Under Review').length;
   const rejectedCount    = projTasks.filter((t) => t.officerStatus === 'Rejected').length;
   const pendingDecision  = projTasks.filter((t) => !t.officerStatus).length;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <BranchHeader title="Surveyor Report Status" subtitle="Review submitted survey data · Approve, Review, or Reject" icon={ClipboardList} onBack={onBack} accentColor="#38bdf8" />
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      <BranchHeader title="Surveyor Report Status" subtitle="Review submitted survey data · Approve, Review, or Reject" icon={ClipboardList} onBack={onBack} accentColor="#2563eb" />
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ background: '#060a14' }}>
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {/* Project picker & scope row */}
         <div className="flex items-center gap-3 flex-wrap">
           {/* Scope Toggle */}
-          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-white border border-slate-200 text-xs shadow-sm">
             <button
               type="button"
               onClick={() => {
@@ -1084,10 +1005,10 @@ function ReportsBranch({ onBack, userProfile }) {
                   setSelectedProjId(myProjects[0].project_id);
                 }
               }}
-              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                 scopeFilter === 'my'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span>👤</span> My Projects ({myProjects.length})
@@ -1095,10 +1016,10 @@ function ReportsBranch({ onBack, userProfile }) {
             <button
               type="button"
               onClick={() => setScopeFilter('all')}
-              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                 scopeFilter === 'all'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span>🏢</span> All ({allProjects.length})
@@ -1106,15 +1027,15 @@ function ReportsBranch({ onBack, userProfile }) {
           </div>
 
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <select
               value={selectedProjId}
               onChange={(e) => setSelectedProjId(e.target.value)}
-              className="pl-8 pr-4 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white outline-none cursor-pointer"
+              className="pl-8 pr-4 py-2 text-xs rounded-lg bg-white border border-slate-200 text-slate-800 outline-none cursor-pointer shadow-sm focus:border-blue-600"
             >
               {scopedProjects.length === 0 && <option value="">No projects found</option>}
               {scopedProjects.map((p) => (
-                <option key={p.project_id} value={p.project_id} style={{ background: '#1e293b' }}>
+                <option key={p.project_id} value={p.project_id}>
                   {p.project_id} — {p.project_name} {p.created_by_name ? `(${p.created_by_name})` : ''}
                 </option>
               ))}
@@ -1125,14 +1046,13 @@ function ReportsBranch({ onBack, userProfile }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter plots…"
-            className="px-3 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500 w-48"
+            className="px-3 py-2 text-xs rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 outline-none focus:border-blue-600 w-48 shadow-sm"
           />
           {project && (
             <button
               type="button"
               onClick={() => exportPDF(project, projTasks)}
-              className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all hover:scale-105 active:scale-95"
-              style={{ background: 'linear-gradient(135deg,#1d4ed8,#4f46e5)', color: '#fff', boxShadow: '0 0 12px rgba(99,102,241,.3)' }}
+              className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
               <Download className="w-3.5 h-3.5" /> Export PDF Report
             </button>
@@ -1141,28 +1061,25 @@ function ReportsBranch({ onBack, userProfile }) {
 
         {/* Project meta card */}
         {project && (
-          <div
-            className="p-4 rounded-2xl border"
-            style={{ background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.2)' }}
-          >
+          <div className="p-5 rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <div className="text-lg font-black text-white">{project.project_name}</div>
-                <div className="text-[11px] text-slate-400 font-mono mt-0.5">{project.project_id} · Created {new Date(project.created_at).toLocaleDateString('en-IN')}</div>
+                <div className="text-lg font-bold text-slate-900">{project.project_name}</div>
+                <div className="text-xs text-slate-500 font-mono mt-0.5">{project.project_id} · Created {new Date(project.created_at).toLocaleDateString('en-IN')}</div>
               </div>
             </div>
             {/* Stats strip */}
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-2.5">
               {[
-                { label: 'Total',        val: projTasks.length,  color: '#38bdf8' },
-                { label: '✅ Approved',   val: approvedCount,     color: '#34d399' },
-                { label: '🔄 Review',    val: reviewCount,       color: '#fb923c' },
-                { label: '❌ Rejected',  val: rejectedCount,     color: '#f87171' },
-                { label: '⏳ Pending',   val: pendingDecision,   color: '#94a3b8' },
+                { label: 'Total',        val: projTasks.length,  color: '#2563eb' },
+                { label: '✅ Approved',   val: approvedCount,     color: '#059669' },
+                { label: '🔄 Review',    val: reviewCount,       color: '#d97706' },
+                { label: '❌ Rejected',  val: rejectedCount,     color: '#dc2626' },
+                { label: '⏳ Pending',   val: pendingDecision,   color: '#64748b' },
               ].map(({ label, val, color }) => (
-                <div key={label} className="text-center p-2 rounded-xl" style={{ background: 'rgba(15,23,42,0.6)' }}>
-                  <div className="text-xl font-black" style={{ color }}>{val}</div>
-                  <div className="text-[9px] text-slate-500 font-semibold mt-0.5">{label}</div>
+                <div key={label} className="text-center p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="text-xl font-bold font-mono" style={{ color }}>{val}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold mt-0.5">{label}</div>
                 </div>
               ))}
             </div>
@@ -1171,93 +1088,90 @@ function ReportsBranch({ onBack, userProfile }) {
 
         {/* Plot rows */}
         {projTasks.length === 0 ? (
-          <div className="py-20 text-center text-slate-500">
-            <FolderOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <div className="py-20 text-center text-slate-500 rounded-xl bg-white border border-slate-200 shadow-sm">
+            <FolderOpen className="w-10 h-10 mx-auto mb-2 text-slate-300" />
             <p className="text-sm font-medium">No plots found for this project.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {projTasks.map((task) => {
               const os = task.officerStatus;
-              const osStyle = OFFICER_STATUS_STYLE[os];
+              const osMeta = OFFICER_STATUS_STYLE[os];
+
               return (
                 <div
                   key={task.id}
-                  className="p-4 rounded-2xl border transition-all"
-                  style={{
-                    background: os ? `rgba(15,23,42,0.9)` : 'rgba(15,23,42,0.8)',
-                    border: os ? `1px solid ${osStyle.border}` : '1px solid rgba(100,116,139,.18)',
-                    boxShadow: os ? `0 0 16px ${osStyle.bg}` : 'none',
-                  }}
+                  className="p-5 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all"
                 >
                   {/* Plot header row */}
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-xs font-mono text-sky-300">{task.plotId}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="font-bold text-xs font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
+                        {task.plotId}
+                      </span>
+                      <span className="text-xs text-slate-500 font-mono">
                         {task.khasraNo ? `Khasra: ${task.khasraNo}` : 'Khasra: Pending'}
                       </span>
                       <CatBadge cat={task.verifiedLandClass || task.landCategory} />
+
                       {/* Survey status */}
                       <span
-                        className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                        style={{
-                          background: task.status === 'Completed' ? 'rgba(52,211,153,.15)' : 'rgba(251,191,36,.15)',
-                          color: task.status === 'Completed' ? '#34d399' : '#fbbf24',
-                        }}
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          task.status === 'Completed'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                        }`}
                       >
                         {task.status}
                       </span>
+
                       {/* Officer decision badge */}
                       {os && (
-                        <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                          style={{ background: osStyle.bg, color: osStyle.color, border: `1px solid ${osStyle.border}` }}
-                        >
-                          {os === 'Approved' ? '✅' : os === 'Under Review' ? '🔄' : '❌'} {os}
+                        <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${osMeta.className}`}>
+                          {osMeta.icon} {osMeta.label}
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-emerald-400 font-mono shrink-0">
+                    <span className="text-xs text-slate-600 font-mono shrink-0 font-medium">
                       {Number(task.areaSqKm || 0).toFixed(6)} sq km
                     </span>
                   </div>
 
-                  <div className="flex items-start gap-1.5 text-[11px] text-slate-300 mb-3">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-1.5 text-xs text-slate-500 mb-3">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                     {task.address}
                   </div>
 
                   {/* Owner details grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-[11px]">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
                     <div>
-                      <div className="text-slate-500 mb-1">Surveyor — Owner Name</div>
-                      <div className="font-semibold text-white">{task.surveyorOwnerName || <span className="text-slate-600 italic">Not yet submitted</span>}</div>
+                      <div className="text-slate-400 text-[11px] mb-0.5">Surveyor — Owner Name</div>
+                      <div className="font-semibold text-slate-900">{task.surveyorOwnerName || <span className="text-slate-400 italic">Not yet submitted</span>}</div>
                     </div>
                     <div>
-                      <div className="text-slate-500 mb-1">Surveyor — Phone Number</div>
-                      <div className="font-semibold text-emerald-300 font-mono">
-                        {task.surveyorPhone || task.surveyorOwnerContact || <span className="text-slate-600 italic font-sans">—</span>}
+                      <div className="text-slate-400 text-[11px] mb-0.5">Surveyor — Phone Number</div>
+                      <div className="font-semibold text-slate-900 font-mono">
+                        {task.surveyorPhone || task.surveyorOwnerContact || <span className="text-slate-400 italic font-sans">—</span>}
                       </div>
                     </div>
                     <div>
-                      <div className="text-slate-500 mb-1">Surveyor — Aadhaar Number</div>
-                      <div className="font-semibold text-sky-300 font-mono">
-                        {task.surveyorAadhaar || <span className="text-slate-600 italic font-sans">—</span>}
+                      <div className="text-slate-400 text-[11px] mb-0.5">Surveyor — Aadhaar Number</div>
+                      <div className="font-semibold text-blue-600 font-mono">
+                        {task.surveyorAadhaar || <span className="text-slate-400 italic font-sans">—</span>}
                       </div>
                     </div>
                     <div>
-                      <div className="text-slate-500 mb-1">Verified Land Class</div>
-                      <div className="font-semibold text-white">{task.verifiedLandClass || task.landCategory || '—'}</div>
+                      <div className="text-slate-400 text-[11px] mb-0.5">Verified Land Class</div>
+                      <div className="font-semibold text-slate-900">{task.verifiedLandClass || task.landCategory || '—'}</div>
                     </div>
                     <div>
-                      <div className="text-slate-500 mb-1">Surveyor Zone Designation</div>
-                      <div className="font-semibold font-mono text-sky-300">
+                      <div className="text-slate-400 text-[11px] mb-0.5">Surveyor Zone Designation</div>
+                      <div className="font-semibold font-mono text-slate-900">
                         {(task.zoneType === 'RURAL' || task.isRural) ? '🌾 Rural [2.0x]' : '🏙️ Urban [1.2x]'}
                       </div>
                     </div>
                     <div>
-                      <div className="text-slate-500 mb-1">Documents (Click to View)</div>
+                      <div className="text-slate-400 text-[11px] mb-0.5">Documents (Click to View)</div>
                       <div className="flex gap-2">
                         {task.soilReportUrl ? (
                           <button
@@ -1269,18 +1183,13 @@ function ReportsBranch({ onBack, userProfile }) {
                               url: task.soilReportUrl,
                               task,
                             })}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                            style={{
-                              background: 'rgba(52,211,153,.15)',
-                              color: '#34d399',
-                              border: '1px solid rgba(52,211,153,.4)',
-                            }}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100"
                             title="Click to view & inspect Soil Report"
                           >
                             <FileText className="w-3 h-3" /> Soil Report ↗
                           </button>
                         ) : (
-                          <span className="text-slate-600 text-[10px] py-1 italic">No report</span>
+                          <span className="text-slate-400 text-xs italic">No report</span>
                         )}
 
                         {task.sitePhotoUrl ? (
@@ -1293,203 +1202,182 @@ function ReportsBranch({ onBack, userProfile }) {
                               url: task.sitePhotoUrl,
                               task,
                             })}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                            style={{
-                              background: 'rgba(56,189,248,.15)',
-                              color: '#38bdf8',
-                              border: '1px solid rgba(56,189,248,.4)',
-                            }}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-blue-50 text-blue-700 border border-blue-200/60 hover:bg-blue-100"
                             title="Click to view & inspect Site Photo"
                           >
                             <Eye className="w-3 h-3" /> Photo ↗
                           </button>
                         ) : (
-                          <span className="text-slate-600 text-[10px] py-1 italic">No photo</span>
+                          <span className="text-slate-400 text-xs italic">No photo</span>
                         )}
                       </div>
                     </div>
                   </div>
 
                   {/* ── Financial & LARR Compensation Panel ── */}
-                  <div
-                    className="p-3.5 rounded-xl mb-3 border"
-                    style={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(56,189,248,.25)' }}
-                  >
-                    <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                  <div className="p-4 rounded-lg mb-3 border border-slate-200 bg-white">
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                       <div className="flex items-center gap-2">
-                        <Banknote className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">LARR Compensation Engine (RFCTLARR 2013)</span>
+                        <Banknote className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">LARR Compensation Engine (RFCTLARR 2013)</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleCalculateLarr(task)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95"
-                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', boxShadow: '0 0 12px rgba(16,185,129,.3)' }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                       >
                         🧮 Calculate Compensation
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                       <div>
-                        <div className="text-slate-400 mb-1">Measured Area</div>
-                        <div className="font-mono text-emerald-400 font-bold">
+                        <div className="text-slate-500 mb-1">Measured Area</div>
+                        <div className="font-mono text-slate-900 font-bold">
                           {task.areaSqm ? `${Number(task.areaSqm).toLocaleString('en-IN')} sq m` : (task.areaSqKm ? `${(task.areaSqKm * 1000000).toLocaleString('en-IN')} sq m` : '—')}
                         </div>
                       </div>
                       <div>
-                        <div className="text-slate-400 mb-1">Surveyor Asset Value</div>
-                        <div className="font-mono text-amber-400 font-bold">
+                        <div className="text-slate-500 mb-1">Surveyor Asset Value</div>
+                        <div className="font-mono text-amber-700 font-bold">
                           {task.assetValue ? `₹${Number(task.assetValue).toLocaleString('en-IN')}` : '₹0'}
                         </div>
                       </div>
                       <div>
-                        <div className="text-slate-400 mb-1">Base Circle Rate (₹/sq m)</div>
+                        <div className="text-slate-500 mb-1">Base Circle Rate (₹/sq m)</div>
                         <input
                           type="number"
                           value={circleRates[task.id] ?? ''}
                           onChange={(e) => setCircleRates({ ...circleRates, [task.id]: e.target.value })}
-                          className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded font-mono text-sky-300 font-bold outline-none focus:border-sky-500 text-xs"
+                          className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded font-mono text-slate-800 font-bold outline-none focus:bg-white focus:border-blue-600 text-xs"
                           placeholder="Rate ₹/sq m"
                         />
                       </div>
                       <div>
-                        <div className="text-slate-400 mb-1">Zone / RFCTLARR Multiplier</div>
+                        <div className="text-slate-500 mb-1">Zone / RFCTLARR Multiplier</div>
                         <select
                           value={zoneOverrides[task.id] || task.zoneType || (task.isRural ? 'RURAL' : 'URBAN')}
                           onChange={(e) => setZoneOverrides({ ...zoneOverrides, [task.id]: e.target.value })}
-                          className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded font-mono text-emerald-300 font-bold outline-none focus:border-emerald-500 text-xs cursor-pointer"
+                          className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded font-mono text-slate-800 font-semibold outline-none focus:bg-white focus:border-blue-600 text-xs cursor-pointer"
                         >
-                          <option value="URBAN" style={{ background: '#0f172a' }}>🏙️ Urban (1.2×)</option>
-                          <option value="RURAL" style={{ background: '#0f172a' }}>🌾 Rural (2.0×)</option>
+                          <option value="URBAN">🏙️ Urban (1.2×)</option>
+                          <option value="RURAL">🌾 Rural (2.0×)</option>
                         </select>
                       </div>
                     </div>
 
                     {/* Financial Itemized Breakdown (if calculated) */}
                     {task.larr_financials && (
-                      <div className="mt-3 pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px] bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                      <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <div>
-                          <div className="text-slate-500">Applied Multiplier</div>
-                          <div className="font-mono text-sky-300 font-bold">{task.larr_financials.multiplier}× ({task.larr_financials.zoneType || (task.larr_financials.isRural ? 'Rural' : 'Urban')})</div>
+                          <div className="text-slate-500 text-[11px]">Applied Multiplier</div>
+                          <div className="font-mono text-slate-800 font-bold">{task.larr_financials.multiplier}× ({task.larr_financials.zoneType || (task.larr_financials.isRural ? 'Rural' : 'Urban')})</div>
                         </div>
                         <div>
-                          <div className="text-slate-500">Market Value</div>
-                          <div className="font-mono text-slate-200 font-semibold">₹{Number(task.larr_financials.marketRate).toLocaleString('en-IN')}</div>
+                          <div className="text-slate-500 text-[11px]">Market Value</div>
+                          <div className="font-mono text-slate-800 font-semibold">₹{Number(task.larr_financials.marketRate).toLocaleString('en-IN')}</div>
                         </div>
                         <div>
-                          <div className="text-slate-500">Solatium (100%)</div>
-                          <div className="font-mono text-slate-200 font-semibold">₹{Number(task.larr_financials.solatium).toLocaleString('en-IN')}</div>
+                          <div className="text-slate-500 text-[11px]">Solatium (100%)</div>
+                          <div className="font-mono text-blue-600 font-semibold">₹{Number(task.larr_financials.solatium).toLocaleString('en-IN')}</div>
                         </div>
                         <div>
-                          <div className="text-slate-500">Assets / Crops</div>
-                          <div className="font-mono text-slate-200 font-semibold">₹{Number(task.larr_financials.assetValue).toLocaleString('en-IN')}</div>
+                          <div className="text-slate-500 text-[11px]">Assets / Crops</div>
+                          <div className="font-mono text-amber-700 font-semibold">₹{Number(task.larr_financials.assetValue).toLocaleString('en-IN')}</div>
                         </div>
                         <div>
-                          <div className="text-emerald-400 font-bold">Sanctioned Award</div>
-                          <div className="font-mono text-emerald-400 font-black text-xs">₹{Number(task.larr_financials.totalAward).toLocaleString('en-IN')}</div>
+                          <div className="text-emerald-700 font-bold text-[11px]">Sanctioned Award</div>
+                          <div className="font-mono text-emerald-700 font-bold text-xs">₹{Number(task.larr_financials.totalAward).toLocaleString('en-IN')}</div>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* ── Remarks + Action buttons ── */}
-                  <div className="pt-3 border-t border-slate-800/60 space-y-3">
+                  <div className="pt-3 border-t border-slate-100 space-y-3">
                     {/* Action buttons row */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           Officer Action
                         </span>
                         {os && (
-                          <span
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 animate-pulse"
-                            style={{ background: osStyle.bg, color: osStyle.color, border: `1px solid ${osStyle.border}` }}
-                          >
-                            {os === 'Approved' ? '✅ Approved' : os === 'Under Review' ? '🔄 Needs Surveyor Review' : '❌ Rejected'}
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${osMeta.className}`}>
+                            {osMeta.icon} {osMeta.label}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* APPROVE */}
                         <button
                           type="button"
                           onClick={() => handleOfficerAction(task.id, 'Approved')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                          style={{
-                            background: os === 'Approved' ? 'rgba(52,211,153,.3)' : 'rgba(52,211,153,.12)',
-                            color: '#34d399',
-                            border: `1px solid ${os === 'Approved' ? 'rgba(52,211,153,.6)' : 'rgba(52,211,153,.3)'}`,
-                            boxShadow: os === 'Approved' ? '0 0 12px rgba(52,211,153,.25)' : 'none',
-                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            os === 'Approved'
+                              ? 'bg-emerald-600 text-white shadow-sm'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100'
+                          }`}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" /> Approve
                         </button>
-                        {/* SEND FOR REVIEW */}
                         <button
                           type="button"
                           onClick={() => handleOfficerAction(task.id, 'Under Review')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                          style={{
-                            background: os === 'Under Review' ? 'rgba(251,146,60,.3)' : 'rgba(251,146,60,.12)',
-                            color: '#fb923c',
-                            border: `1px solid ${os === 'Under Review' ? 'rgba(251,146,60,.6)' : 'rgba(251,146,60,.3)'}`,
-                            boxShadow: os === 'Under Review' ? '0 0 12px rgba(251,146,60,.25)' : 'none',
-                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            os === 'Under Review'
+                              ? 'bg-amber-600 text-white shadow-sm'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200/60 hover:bg-amber-100'
+                          }`}
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Send for Review
                         </button>
-                        {/* REJECT */}
                         <button
                           type="button"
                           onClick={() => handleOfficerAction(task.id, 'Rejected')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-                          style={{
-                            background: os === 'Rejected' ? 'rgba(248,113,113,.3)' : 'rgba(248,113,113,.12)',
-                            color: '#f87171',
-                            border: `1px solid ${os === 'Rejected' ? 'rgba(248,113,113,.6)' : 'rgba(248,113,113,.3)'}`,
-                            boxShadow: os === 'Rejected' ? '0 0 12px rgba(248,113,113,.25)' : 'none',
-                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            os === 'Rejected'
+                              ? 'bg-rose-600 text-white shadow-sm'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200/60 hover:bg-rose-100'
+                          }`}
                         >
                           <XCircle className="w-3.5 h-3.5" /> Reject
                         </button>
                       </div>
                     </div>
 
-                    {/* BOX 1: Surveyor Review Instructions (Expands when Under Review or has instructions) */}
+                    {/* BOX 1: Surveyor Review Instructions */}
                     {(os === 'Under Review' || (reviewRemarkDrafts[task.id] !== undefined ? reviewRemarkDrafts[task.id] : task.reviewRemarks)) && (
-                      <div className="p-2.5 rounded-xl bg-orange-950/25 border border-orange-500/40 shadow-inner space-y-1.5 animate-fadeIn">
+                      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-orange-400 flex items-center gap-1.5">
-                            <RotateCcw className="w-3 h-3 text-orange-400 animate-spin-slow" />
+                          <label className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                            <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
                             Review Instructions for Surveyor (Live in Surveyor Portal)
                           </label>
-                          <span className="text-[10px] text-orange-300/70 font-mono">Field Re-inspection</span>
+                          <span className="text-[10px] text-amber-700 font-mono">Field Re-inspection</span>
                         </div>
                         <textarea
                           rows={2}
                           value={reviewRemarkDrafts[task.id] !== undefined ? reviewRemarkDrafts[task.id] : (task.reviewRemarks || '')}
                           onChange={(e) => handleReviewRemarkChange(task.id, e.target.value)}
-                          placeholder="Detail what needs to be re-surveyed, corrected, or re-uploaded (e.g. recheck northern boundary demarcation, re-upload legible 7/12 extract)..."
-                          className="w-full px-3 py-2 bg-slate-900/90 border border-orange-500/30 rounded-lg text-xs text-orange-100 placeholder-orange-400/40 focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400 resize-none transition-all"
+                          placeholder="Detail what needs to be re-surveyed, corrected, or re-uploaded..."
+                          className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 resize-none transition-all"
                         />
                       </div>
                     )}
 
-                    {/* BOX 2: Official RFCTLARR Award Remarks (Printed on PDF) */}
+                    {/* BOX 2: Official RFCTLARR Award Remarks */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                          Official Award Remarks <span className="text-slate-500 font-normal lowercase">(printed on RFCTLARR PDF report)</span>
+                        <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          Official Award Remarks <span className="text-slate-400 font-normal lowercase">(printed on RFCTLARR PDF report)</span>
                         </label>
-                        <span className="text-[9px] text-slate-500 font-mono">PDF Export</span>
+                        <span className="text-[10px] text-slate-400 font-mono">PDF Export</span>
                       </div>
                       <textarea
                         rows={2}
                         value={officerRemarkDrafts[task.id] !== undefined ? officerRemarkDrafts[task.id] : (task.officerRemarks || '')}
                         onChange={(e) => handleOfficerRemarkChange(task.id, e.target.value)}
                         placeholder="Add official notes, legal conditions, or valuation remarks for the RFCTLARR compensation award..."
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500 resize-none transition-all"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 resize-none transition-all"
                       />
                     </div>
                   </div>
@@ -1500,7 +1388,6 @@ function ReportsBranch({ onBack, userProfile }) {
         )}
       </div>
 
-      {/* Full Evidence & Document Viewer Modal */}
       <DocumentViewerModal doc={activeDoc} onClose={() => setActiveDoc(null)} />
     </div>
   );
@@ -1509,12 +1396,10 @@ function ReportsBranch({ onBack, userProfile }) {
 // ════════════════════════════════════════════════════════════════════════════════
 // BRANCH 3 — Transaction Status
 // ════════════════════════════════════════════════════════════════════════════════
-const DISBURSE_FLOW = ['Processing', 'Disbursed'];
-
 function TransactionsBranch({ onBack, userProfile }) {
   const { showToast } = useGIS();
   const [allProjects, setAllProjects] = useState(loadProjects);
-  const [scopeFilter, setScopeFilter] = useState('my'); // 'my' | 'all'
+  const [scopeFilter, setScopeFilter] = useState('my');
   const myProjects = useMemo(() => allProjects.filter((p) => isProjectOwnedByUser(p, userProfile)), [allProjects, userProfile]);
   const scopedProjects = scopeFilter === 'my' && myProjects.length > 0 ? myProjects : allProjects;
   const [selectedProjId, setSelectedProjId] = useState(() => (myProjects[0] || loadProjects()[0])?.project_id || '');
@@ -1549,7 +1434,6 @@ function TransactionsBranch({ onBack, userProfile }) {
 
   const projTasks = useMemo(() => allTasks.filter((t) => t.projectId === selectedProjId), [allTasks, selectedProjId]);
 
-  // Derive award amounts deterministically (mock: area × 1800 ₹/sq m)
   const RATE = 1800;
 
   const getInfo = (task) => {
@@ -1579,14 +1463,13 @@ function TransactionsBranch({ onBack, userProfile }) {
   const fmt = (n) => n >= 10_000_000 ? `₹${(n/10_000_000).toFixed(2)} Cr` : n >= 100_000 ? `₹${(n/100_000).toFixed(2)} L` : `₹${n.toLocaleString('en-IN')}`;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <BranchHeader title="Beneficiary Transaction Status" subtitle="Award amounts & disbursement audit" icon={CreditCard} onBack={onBack} accentColor="#fb923c" />
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      <BranchHeader title="Beneficiary Transaction Status" subtitle="Award amounts & disbursement audit" icon={CreditCard} onBack={onBack} accentColor="#2563eb" />
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ background: '#060a14' }}>
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {/* Project selector & Scope toggle row */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Scope Toggle */}
-          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-white border border-slate-200 text-xs shadow-sm">
             <button
               type="button"
               onClick={() => {
@@ -1595,10 +1478,10 @@ function TransactionsBranch({ onBack, userProfile }) {
                   setSelectedProjId(myProjects[0].project_id);
                 }
               }}
-              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                 scopeFilter === 'my'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span>👤</span> My Projects ({myProjects.length})
@@ -1606,10 +1489,10 @@ function TransactionsBranch({ onBack, userProfile }) {
             <button
               type="button"
               onClick={() => setScopeFilter('all')}
-              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2.5 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                 scopeFilter === 'all'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span>🏢</span> All ({allProjects.length})
@@ -1619,11 +1502,11 @@ function TransactionsBranch({ onBack, userProfile }) {
           <select
             value={selectedProjId}
             onChange={(e) => setSelectedProjId(e.target.value)}
-            className="px-3 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white outline-none cursor-pointer"
+            className="px-3 py-2 text-xs rounded-lg bg-white border border-slate-200 text-slate-800 outline-none cursor-pointer shadow-sm focus:border-blue-600"
           >
             {scopedProjects.length === 0 && <option value="">No projects found</option>}
             {scopedProjects.map((p) => (
-              <option key={p.project_id} value={p.project_id} style={{ background: '#1e293b' }}>
+              <option key={p.project_id} value={p.project_id}>
                 {p.project_id} — {p.project_name} {p.created_by_name ? `(${p.created_by_name})` : ''}
               </option>
             ))}
@@ -1632,16 +1515,16 @@ function TransactionsBranch({ onBack, userProfile }) {
 
         {/* Summary strip */}
         {projTasks.length > 0 && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Total Award', val: fmt(totalAward), color: '#fb923c', Icon: Banknote },
-              { label: 'Disbursed', val: fmt(disbursed), color: '#34d399', Icon: CheckCircle2 },
-              { label: 'Remaining', val: fmt(totalAward - disbursed), color: '#38bdf8', Icon: TrendingUp },
+              { label: 'Total Award', val: fmt(totalAward), color: '#0f172a', Icon: Banknote },
+              { label: 'Disbursed', val: fmt(disbursed), color: '#059669', Icon: CheckCircle2 },
+              { label: 'Remaining', val: fmt(totalAward - disbursed), color: '#2563eb', Icon: TrendingUp },
             ].map(({ label, val, color, Icon }) => (
-              <div key={label} className="p-4 rounded-2xl border" style={{ background: 'rgba(15,23,42,0.8)', border: `1px solid rgba(100,116,139,.18)` }}>
-                <Icon className="w-4 h-4 mb-2" style={{ color }} />
-                <div className="text-lg font-black" style={{ color }}>{val}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">{label}</div>
+              <div key={label} className="p-5 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all">
+                <Icon className="w-5 h-5 mb-2" style={{ color }} />
+                <div className="text-xl font-bold font-mono" style={{ color }}>{val}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{label}</div>
               </div>
             ))}
           </div>
@@ -1649,54 +1532,53 @@ function TransactionsBranch({ onBack, userProfile }) {
 
         {/* Table */}
         {projTasks.length === 0 ? (
-          <div className="py-20 text-center text-slate-500">
-            <Banknote className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <div className="py-20 text-center text-slate-500 rounded-xl bg-white border border-slate-200 shadow-sm">
+            <Banknote className="w-10 h-10 mx-auto mb-2 text-slate-300" />
             <p className="text-sm font-medium">No plots for this project.</p>
           </div>
         ) : (
-          <div className="rounded-2xl border overflow-hidden" style={{ border: '1px solid rgba(100,116,139,.2)' }}>
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <table className="w-full text-xs">
               <thead>
-                <tr style={{ background: 'rgba(15,23,42,0.95)' }}>
+                <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
                   {['Owner Name', 'Plot / Dag No', 'Area', 'Award Amount', 'Status', 'Action'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {projTasks.map((task, idx) => {
+                {projTasks.map((task) => {
                   const info = getInfo(task);
                   const s = DISBURSE_STYLE[info.status] || DISBURSE_STYLE.Processing;
                   const canDisburse = info.status === 'Processing';
                   const canStall    = info.status !== 'Stalled';
                   return (
-                    <tr key={task.id} style={{ background: idx % 2 === 0 ? 'rgba(15,23,42,0.6)' : 'rgba(9,13,27,0.6)' }}>
-                      <td className="px-4 py-3 font-medium text-white border-b border-slate-800/40">
+                    <tr key={task.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 text-slate-800">
+                      <td className="px-4 py-3 font-semibold text-slate-900">
                         {task.surveyorOwnerName || task.ownerName || 'Unverified'}
                       </td>
-                      <td className="px-4 py-3 font-mono text-sky-300 border-b border-slate-800/40">
+                      <td className="px-4 py-3 font-mono text-blue-600">
                         {task.plotId}<br />
-                        <span className="text-[9px] text-slate-500">{task.khasraNo ? `Khasra: ${task.khasraNo}` : 'Khasra: Pending'}</span>
+                        <span className="text-[10px] text-slate-400">{task.khasraNo ? `Khasra: ${task.khasraNo}` : 'Khasra: Pending'}</span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-emerald-400 border-b border-slate-800/40">
+                      <td className="px-4 py-3 font-mono text-slate-700 font-medium">
                         {Number(task.areaSqKm || 0).toFixed(4)} sq km
                       </td>
-                      <td className="px-4 py-3 font-bold text-amber-300 border-b border-slate-800/40">
+                      <td className="px-4 py-3 font-bold text-slate-900 font-mono">
                         {fmt(info.awardAmount)}
                       </td>
-                      <td className="px-4 py-3 border-b border-slate-800/40">
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold border" style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${s.className}`}>
                           {info.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 border-b border-slate-800/40">
+                      <td className="px-4 py-3">
                         <div className="flex gap-2">
                           {canDisburse && (
                             <button
                               type="button"
                               onClick={() => handleAction(task, 'Disbursed')}
-                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-105"
-                              style={{ background: 'rgba(52,211,153,.18)', color: '#34d399', border: '1px solid rgba(52,211,153,.3)' }}
+                              className="px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100"
                             >
                               Disburse
                             </button>
@@ -1705,8 +1587,7 @@ function TransactionsBranch({ onBack, userProfile }) {
                             <button
                               type="button"
                               onClick={() => handleStall(task)}
-                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all hover:scale-105"
-                              style={{ background: 'rgba(248,113,113,.12)', color: '#f87171', border: '1px solid rgba(248,113,113,.25)' }}
+                              className="px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all bg-rose-50 text-rose-700 border border-rose-200/60 hover:bg-rose-100"
                             >
                               Stall
                             </button>
@@ -1730,7 +1611,7 @@ function TransactionsBranch({ onBack, userProfile }) {
 // ════════════════════════════════════════════════════════════════════════════════
 export default function MunicipalOfficerLayout() {
   const { userProfile } = useAuth();
-  const [branch, setBranch] = useState(null); // null = hub, 'gis' | 'reports' | 'transactions'
+  const [branch, setBranch] = useState(null);
 
   if (branch === 'gis')          return <GISBranch onBack={() => setBranch(null)} userProfile={userProfile} />;
   if (branch === 'reports')      return <ReportsBranch onBack={() => setBranch(null)} userProfile={userProfile} />;
