@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Compass, Server, Sparkles, Wifi, WifiOff,
+  Compass, Server, Wifi, WifiOff,
   CheckCircle2, XCircle, Info, UserCog, LogOut
 } from 'lucide-react';
 import { GISProvider, useGIS } from './context/GISContext';
@@ -57,8 +57,6 @@ function AppContent() {
   const {
     backendOnline,
     dataSource,
-    loadSampleRoute,
-    isLoading,
     notification
   } = useGIS();
 
@@ -121,19 +119,6 @@ function AppContent() {
                 </span>
               )}
             </div>
-          )}
-
-          {/* Sample alignment button — only for Municipal Officer */}
-          {userRole === ROLES.MUNICIPAL_OFFICER && (
-            <button
-              type="button"
-              onClick={loadSampleRoute}
-              disabled={isLoading}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 shadow-xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              Sample Route
-            </button>
           )}
 
           {/* Role badge + Switch Persona + Logout */}
