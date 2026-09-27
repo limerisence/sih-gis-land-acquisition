@@ -46,6 +46,10 @@ export function projectFromDb(row) {
 }
 
 export function taskToDb(t) {
+  let coords = t.coords || { lat: 22.5726, lng: 88.3639 };
+  if (t.geometry && !coords.geometry) {
+    coords = { ...coords, geometry: t.geometry };
+  }
   return {
     id: t.id,
     plot_id: t.plotId || t.plot_id,
@@ -53,7 +57,7 @@ export function taskToDb(t) {
     project_id: t.projectId || t.project_id,
     project_name: t.projectName || t.project_name,
     address: t.address || '',
-    coords: t.coords || { lat: 22.5726, lng: 88.3639 },
+    coords: coords,
     land_category: t.landCategory || t.land_category || 'Residential',
     area_sq_km: t.areaSqKm ?? t.area_sq_km ?? 0,
     area_sq_m: t.areaSqM ?? t.area_sq_m ?? 0,
@@ -85,6 +89,7 @@ export function taskToDb(t) {
 }
 
 export function taskFromDb(row) {
+  const coords = row.coords || { lat: 22.5726, lng: 88.3639 };
   return {
     id: row.id,
     plotId: row.plot_id,
@@ -93,7 +98,8 @@ export function taskFromDb(row) {
     projectId: row.project_id,
     projectName: row.project_name,
     address: row.address,
-    coords: row.coords || { lat: 22.5726, lng: 88.3639 },
+    coords: coords,
+    geometry: coords.geometry || null,
     landCategory: row.land_category,
     areaSqKm: row.area_sq_km ? Number(row.area_sq_km) : 0,
     areaSqM: row.area_sq_m ? Number(row.area_sq_m) : 0,
@@ -135,8 +141,13 @@ export const dataService = {
         const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
         if (!error && data) {
           const mapped = data.map(projectFromDb);
-          saveRaw(LS_PROJECTS_KEY, mapped); // sync local cache
-          return mapped;
+          const local = loadRaw(LS_PROJECTS_KEY, []);
+          const mergedMap = new Map();
+          local.forEach((p) => mergedMap.set(p.project_id || p.projectId, p));
+          mapped.forEach((p) => mergedMap.set(p.project_id || p.projectId, p));
+          const merged = Array.from(mergedMap.values()).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+          saveRaw(LS_PROJECTS_KEY, merged);
+          return merged;
         }
       } catch (e) {
         console.warn('[DataService] Supabase getProjects failed, using local cache:', e);
@@ -199,8 +210,13 @@ export const dataService = {
         const { data, error } = await supabase.from('survey_tasks').select('*').order('dispatched_at', { ascending: false });
         if (!error && data) {
           const mapped = data.map(taskFromDb);
-          saveRaw(LS_TASKS_KEY, mapped);
-          return mapped;
+          const local = loadRaw(LS_TASKS_KEY, []);
+          const mergedMap = new Map();
+          local.forEach((t) => mergedMap.set(t.id, t));
+          mapped.forEach((t) => mergedMap.set(t.id, t));
+          const merged = Array.from(mergedMap.values()).sort((a, b) => new Date(b.dispatchedAt || 0) - new Date(a.dispatchedAt || 0));
+          saveRaw(LS_TASKS_KEY, merged);
+          return merged;
         }
       } catch (e) {
         console.warn('[DataService] Supabase getTasks failed, using local cache:', e);

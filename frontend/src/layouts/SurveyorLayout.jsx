@@ -104,7 +104,7 @@ function ProjectTile({ project, taskCount, onOpen }) {
 }
 
 // ─── Individual plot form card ────────────────────────────────────────────────
-function PlotFormCard({ task, localData, onChange }) {
+function PlotFormCard({ task, localData, onChange, onFocus }) {
   const soilInputRef = useRef(null);
   const photoInputRef = useRef(null);
   const [uploadingSoil, setUploadingSoil] = useState(false);
@@ -175,16 +175,28 @@ function PlotFormCard({ task, localData, onChange }) {
             {task.status}
           </span>
         </div>
-        {task.coords?.lat && (
-          <a
-            href={`https://www.google.com/maps?q=${task.coords.lat},${task.coords.lng}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs font-semibold transition-colors shrink-0"
-          >
-            <Navigation className="w-3.5 h-3.5" /> Navigate <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
+        <div className="flex items-center gap-2.5">
+          {onFocus && (
+            <button
+              type="button"
+              onClick={onFocus}
+              className="flex items-center gap-1 text-slate-600 hover:text-blue-600 text-xs font-semibold transition-colors cursor-pointer"
+              title="Locate plot on map"
+            >
+              <MapPin className="w-3.5 h-3.5 text-blue-600" /> Locate
+            </button>
+          )}
+          {task.coords?.lat && (
+            <a
+              href={`https://www.google.com/maps?q=${task.coords.lat},${task.coords.lng}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs font-semibold transition-colors shrink-0"
+            >
+              <Navigation className="w-3.5 h-3.5" /> Navigate <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
       </div>
 
       {task.address && (
@@ -374,6 +386,7 @@ function PlotFormCard({ task, localData, onChange }) {
 // ─── Step 1: Project Tile Grid (3-Tab) ───────────────────────────────────────
 function ProjectGrid({ onSelectProject, onSelectReview }) {
   const { userProfile } = useAuth();
+  const { loadProjectIntoMap } = useGIS();
   const [activeTab, setActiveTab] = useState('active');
   const [projects, setProjects] = useState(loadProjects);
   const [allTasks, setAllTasks] = useState(loadTasks);
@@ -417,6 +430,14 @@ function ProjectGrid({ onSelectProject, onSelectReview }) {
     activeTab === 'active' ? activeProjects :
     activeTab === 'review' ? reviewProjects :
     completedProjects;
+
+  React.useEffect(() => {
+    if (shownProjects.length > 0) {
+      const activeP = shownProjects[0];
+      const pTasks = allTasks.filter((t) => t.projectId === activeP.project_id);
+      loadProjectIntoMap(activeP, pTasks);
+    }
+  }, [shownProjects, allTasks, loadProjectIntoMap]);
 
   return (
     <div className="flex-1 flex overflow-hidden bg-slate-50">
@@ -529,7 +550,7 @@ function ProjectGrid({ onSelectProject, onSelectReview }) {
 
 // ─── Review Inspection: plots sent back by officer ────────────────────────────
 function ReviewInspection({ project, onBack }) {
-  const { showToast } = useGIS();
+  const { showToast, loadProjectIntoMap, focusOnFeature } = useGIS();
   const [allTasks, setAllTasks] = useState(loadTasks);
 
   const refreshReview = useCallback(async () => {
@@ -548,6 +569,12 @@ function ReviewInspection({ project, onBack }) {
   const reviewTasks = allTasks.filter(
     (t) => t.projectId === project.project_id && (t.officerStatus === 'Under Review' || Boolean(t.reviewRemarks))
   );
+
+  React.useEffect(() => {
+    if (project && reviewTasks.length > 0) {
+      loadProjectIntoMap(project, reviewTasks);
+    }
+  }, [project, reviewTasks, loadProjectIntoMap]);
 
   const [formData, setFormData] = useState(() => {
     const init = {};
@@ -659,6 +686,17 @@ function ReviewInspection({ project, onBack }) {
                   task={task}
                   localData={formData[task.id] || {}}
                   onChange={(field, value) => handleChange(task.id, field, value)}
+                  onFocus={() => {
+                    if (task.coords?.lat && task.coords?.lng) {
+                      focusOnFeature({
+                        type: 'Feature',
+                        geometry: task.geometry || task.coords?.geometry || {
+                          type: 'Point',
+                          coordinates: [Number(task.coords.lng), Number(task.coords.lat)],
+                        },
+                      });
+                    }
+                  }}
                 />
               ))}
 
@@ -679,7 +717,7 @@ function ReviewInspection({ project, onBack }) {
         </div>
 
         {/* Map */}
-        <div className="w-80 shrink-0 border-l border-slate-200 relative bg-white">
+        <div className="w-[420px] shrink-0 border-l border-slate-200 relative bg-white">
           <MapContainer />
         </div>
       </div>
@@ -690,7 +728,7 @@ function ReviewInspection({ project, onBack }) {
 // ─── Step 2 + 3: Plot Inspection & Batch Finalization ─────────────────────────
 
 function PlotInspection({ project, onBack }) {
-  const { showToast, focusOnFeature, allFeatures } = useGIS();
+  const { showToast, focusOnFeature, allFeatures, loadProjectIntoMap } = useGIS();
   const [allTasks, setAllTasks] = useState(loadTasks);
 
   const refreshPlots = useCallback(async () => {
@@ -707,6 +745,12 @@ function PlotInspection({ project, onBack }) {
   }, [refreshPlots]);
 
   const projTasks = allTasks.filter((t) => t.projectId === project.project_id);
+
+  React.useEffect(() => {
+    if (project && projTasks.length > 0) {
+      loadProjectIntoMap(project, projTasks);
+    }
+  }, [project, projTasks, loadProjectIntoMap]);
 
   const [formData, setFormData] = useState(() => {
     const init = {};
@@ -818,6 +862,17 @@ function PlotInspection({ project, onBack }) {
               task={task}
               localData={formData[task.id] || {}}
               onChange={(field, value) => handleChange(task.id, field, value)}
+              onFocus={() => {
+                if (task.coords?.lat && task.coords?.lng) {
+                  focusOnFeature({
+                    type: 'Feature',
+                    geometry: task.geometry || task.coords?.geometry || {
+                      type: 'Point',
+                      coordinates: [Number(task.coords.lng), Number(task.coords.lat)],
+                    },
+                  });
+                }
+              }}
             />
           ))}
 
@@ -869,7 +924,7 @@ function PlotInspection({ project, onBack }) {
         </div>
 
         {/* Map */}
-        <div className="w-80 shrink-0 border-l border-slate-200 relative bg-white">
+        <div className="w-[420px] shrink-0 border-l border-slate-200 relative bg-white">
           <MapContainer />
         </div>
       </div>

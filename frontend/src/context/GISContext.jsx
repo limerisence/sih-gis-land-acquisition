@@ -624,6 +624,85 @@ export function GISProvider({ children }) {
     }
   }, []);
 
+  // Hydrate project corridor and assigned plot polygons into map for surveyor inspection
+  const loadProjectIntoMap = useCallback((project, tasks = []) => {
+    if (!project && (!tasks || tasks.length === 0)) return;
+    const pRates = project?.baseRates || project?.base_rates || {};
+    const corridorPoints = pRates.points || [];
+    const bufferWidth = pRates.bufferWidthMeters || 20;
+
+    if (corridorPoints.length >= 2) {
+      const valid = corridorPoints.map((p) => ({
+        lat: Number(Number(p.lat).toFixed(6)),
+        lng: Number(Number(p.lng).toFixed(6))
+      }));
+      setPointsState(valid);
+      try {
+        const line = turf.lineString(valid.map((p) => [p.lng, p.lat]));
+        const bridgeBuf = turf.buffer(line, bufferWidth / 2, { units: 'meters' });
+        setBridgeBuffer(bridgeBuf);
+        setBufferVersion((v) => v + 1);
+      } catch (_) {}
+    } else if (tasks.length > 0) {
+      const taskPts = tasks
+        .filter((t) => t.coords?.lat && t.coords?.lng)
+        .map((t) => ({ lat: Number(t.coords.lat), lng: Number(t.coords.lng) }));
+      if (taskPts.length >= 2) {
+        setPointsState(taskPts);
+        try {
+          const line = turf.lineString(taskPts.map((p) => [p.lng, p.lat]));
+          const bridgeBuf = turf.buffer(line, bufferWidth / 2, { units: 'meters' });
+          setBridgeBuffer(bridgeBuf);
+          setBufferVersion((v) => v + 1);
+        } catch (_) {}
+      }
+    }
+
+    // Convert tasks into GeoJSON features for the map
+    const plotFeatures = tasks.map((t) => {
+      let geom = t.geometry || t.coords?.geometry;
+      const lat = Number(t.coords?.lat || 22.5726);
+      const lng = Number(t.coords?.lng || 88.3639);
+
+      if (!geom) {
+        const delta = 0.00035;
+        geom = {
+          type: 'Polygon',
+          coordinates: [[
+            [Number((lng - delta).toFixed(6)), Number((lat - delta).toFixed(6))],
+            [Number((lng + delta).toFixed(6)), Number((lat - delta).toFixed(6))],
+            [Number((lng + delta).toFixed(6)), Number((lat + delta).toFixed(6))],
+            [Number((lng - delta).toFixed(6)), Number((lat + delta).toFixed(6))],
+            [Number((lng - delta).toFixed(6)), Number((lat - delta).toFixed(6))],
+          ]]
+        };
+      }
+
+      return {
+        type: 'Feature',
+        id: t.plotId,
+        geometry: geom,
+        properties: {
+          plotId: t.plotId,
+          khasraNo: t.khasraNo,
+          ownerName: t.surveyorOwnerName || t.ownerName || 'Owner Pending Verification',
+          address: t.address,
+          coordinates: { lat, lng },
+          landAreaSqM: t.areaSqM || 500,
+          landAreaSqKm: t.areaSqKm || 0.0005,
+          landCategory: t.verifiedLandClass || t.landCategory || 'Pending Survey',
+          ratePerSqM: 0,
+          status: t.status,
+        }
+      };
+    });
+
+    setAllFeatures(plotFeatures);
+    setAffectedPlots(plotFeatures);
+    setLandVersion((v) => v + 1);
+    setIsCalculated(true);
+  }, []);
+
   const landPlotFeatures = useMemo(() => allFeatures.filter(isLandPlot), [allFeatures]);
   const buildingFeatures = useMemo(() => allFeatures.filter(isBuilding), [allFeatures]);
   const landPlotFC = useMemo(() => ({ type: 'FeatureCollection', features: landPlotFeatures }), [landPlotFeatures]);
@@ -639,7 +718,7 @@ export function GISProvider({ children }) {
     points, bufferWidthMeters, setBufferWidthMeters,
     isCalculated, isLoading, loadingStage, notification,
     selectedFeature, setSelectedFeature, mapFocusTarget, setMapFocusTarget,
-    isModalOpen, setIsModalOpen, inspectFeature, focusOnFeature,
+    isModalOpen, setIsModalOpen, inspectFeature, focusOnFeature, loadProjectIntoMap,
     addPoint, removePoint, removeLastPoint, clearPoints, setPoints,
     runAnalysis, loadSampleRoute, resetAll, showToast, formatINR,
   };

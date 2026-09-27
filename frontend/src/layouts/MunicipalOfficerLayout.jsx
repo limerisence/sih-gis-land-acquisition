@@ -624,7 +624,7 @@ function CommandHub({ onBranch, userProfile }) {
 // BRANCH 1 — Create New Project (GIS Canvas)
 // ════════════════════════════════════════════════════════════════════════════════
 function GISBranch({ onBack, userProfile }) {
-  const { affectedPlots, isCalculated, showToast } = useGIS();
+  const { affectedPlots, isCalculated, showToast, points, bufferWidthMeters } = useGIS();
   const [projectName, setProjectName] = useState('');
   const [dispatchedIds, setDispatchedIds] = useState(() => new Set(loadTasks().map((t) => t.plotId)));
   const [lastProjectId, setLastProjectId] = useState(null);
@@ -637,7 +637,7 @@ function GISBranch({ onBack, userProfile }) {
   const totalAffected = affectedPlots.length;
   const canSend = isCalculated && totalAffected > 0 && projectName.trim().length > 0;
 
-  const handleSendAll = useCallback(() => {
+  const handleSendAll = useCallback(async () => {
     if (!projectName.trim()) {
       showToast('Enter a Project Name before dispatching.', 'error');
       return;
@@ -648,6 +648,29 @@ function GISBranch({ onBack, userProfile }) {
     const existing = loadTasks();
     const existingIds = new Set(existing.map((t) => t.plotId));
 
+    // 1. Construct and save the Project FIRST to satisfy PostgreSQL foreign key constraint
+    const projects = loadProjects();
+    const newProject = {
+      project_id: pid,
+      project_name: projectName.trim(),
+      created_at: now,
+      status: 'PENDING',
+      created_by: userProfile?.email || userProfile?.name || 'Municipal Officer',
+      created_by_name: userProfile?.name || 'Municipal Officer',
+      created_by_id: userProfile?.id || '',
+      baseRates: {
+        Residential: Number(baseRates.Residential) || 4500,
+        Commercial: Number(baseRates.Commercial) || 8500,
+        Agricultural: Number(baseRates.Agricultural) || 2200,
+        points: points || [],
+        bufferWidthMeters: Number(bufferWidthMeters) || 20,
+      }
+    };
+
+    saveProjects([newProject, ...projects.filter((p) => (p.project_id || p.projectId) !== pid)]);
+    await dataService.addProject(newProject);
+
+    // 2. Construct tasks with preserved parcel geometries
     const newTasks = all
       .filter((f) => !existingIds.has(f.properties?.plotId))
       .map((f) => {
@@ -664,6 +687,11 @@ function GISBranch({ onBack, userProfile }) {
             coords = { lat: 22.5726, lng: 88.3639 };
           }
         }
+        const coordsObj = {
+          lat: coords.lat,
+          lng: coords.lng,
+          geometry: f.geometry || null,
+        };
         const address = p.address || `Plot at ${coords.lat.toFixed(5)}° N, ${coords.lng.toFixed(5)}° E, West Bengal`;
         return {
           id: `TASK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -672,7 +700,8 @@ function GISBranch({ onBack, userProfile }) {
           projectId: pid,
           projectName: projectName.trim(),
           address: address,
-          coords: coords,
+          coords: coordsObj,
+          geometry: f.geometry || null,
           landCategory: p.landCategory,
           areaSqKm: p.landAreaSqKm,
           areaSqM: p.landAreaSqM,
@@ -696,28 +725,15 @@ function GISBranch({ onBack, userProfile }) {
         };
       });
 
-    saveTasks([...existing, ...newTasks]);
-    const projects = loadProjects();
-    const newProject = {
-      project_id: pid,
-      project_name: projectName.trim(),
-      created_at: now,
-      status: 'PENDING',
-      created_by: userProfile?.email || userProfile?.name || 'Municipal Officer',
-      created_by_name: userProfile?.name || 'Municipal Officer',
-      created_by_id: userProfile?.id || '',
-      baseRates: {
-        Residential: Number(baseRates.Residential) || 4500,
-        Commercial: Number(baseRates.Commercial) || 8500,
-        Agricultural: Number(baseRates.Agricultural) || 2200,
-      }
-    };
-    saveProjects([...projects, newProject]);
+    // 3. Save tasks SECOND now that the parent project row exists in Supabase
+    const allTasks = [...existing, ...newTasks];
+    saveTasks(allTasks);
+    await dataService.saveTasks(allTasks);
 
     setDispatchedIds(new Set([...existing.map((t) => t.plotId), ...newTasks.map((t) => t.plotId)]));
     setLastProjectId(pid);
     showToast(`✅ Project ${pid} created — ${newTasks.length} plots dispatched.`, 'success');
-  }, [projectName, baseRates, affectedPlots, userProfile, showToast]);
+  }, [projectName, baseRates, affectedPlots, points, bufferWidthMeters, userProfile, showToast]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
