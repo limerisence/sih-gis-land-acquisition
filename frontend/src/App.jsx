@@ -88,21 +88,6 @@ function AppContent() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Layer legend chips — only relevant for GIS-facing roles */}
-          {(userRole === ROLES.MUNICIPAL_OFFICER || userRole === ROLES.SURVEYOR) && (
-            <div className="hidden md:flex items-center gap-1.5 text-[11px] font-medium">
-              <span className="px-2 py-0.5 rounded-md flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200/60">
-                <span className="w-2 h-2 rounded-xs inline-block bg-rose-600" /> Affected Plot
-              </span>
-              <span className="px-2 py-0.5 rounded-md flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200/60">
-                <span className="w-2 h-2 rounded-xs inline-block bg-amber-500" /> Affected Building
-              </span>
-              <span className="px-2 py-0.5 rounded-md flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200/60">
-                <span className="w-2 h-2 rounded-xs inline-block bg-blue-600" /> Buffer
-              </span>
-            </div>
-          )}
-
           {/* Backend status chip */}
           {userRole && (
             <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-600 border border-slate-200">
