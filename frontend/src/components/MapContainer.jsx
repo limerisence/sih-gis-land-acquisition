@@ -164,15 +164,6 @@ export default function MapContainer() {
     [affectedPlotIds, selectedFeature]
   );
 
-  const getBuildingStyle = useCallback(
-    (feature) => {
-      const pid = feature.properties?.plotId;
-      if (selectedFeature?.feature?.properties?.plotId === pid) return STYLE.building.selected;
-      if (affectedBuildingIds.has(pid)) return STYLE.building.affected;
-      return STYLE.building.unaffected;
-    },
-    [affectedBuildingIds, selectedFeature]
-  );
 
   // Interaction handlers
   const bindLandFeature = useCallback(
