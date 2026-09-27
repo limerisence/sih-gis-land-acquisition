@@ -1137,6 +1137,12 @@ function ReportsBranch({ onBack, userProfile }) {
               const isRejected = os === 'Rejected' || task.status === 'Rejected';
               const isReview = os === 'Under Review' || task.status === 'Under Review';
 
+              const isSurveySubmitted = Boolean(
+                task.surveyorOwnerName &&
+                task.surveyorOwnerName.trim() !== '' &&
+                task.surveyorOwnerName !== 'Not yet submitted'
+              );
+
               const borderStyle = isApproved
                 ? 'border-2 border-emerald-500 ring-2 ring-emerald-100 shadow-md shadow-emerald-50'
                 : isRejected
@@ -1177,6 +1183,12 @@ function ReportsBranch({ onBack, userProfile }) {
                       >
                         {task.status}
                       </span>
+
+                      {!isSurveySubmitted && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                          ⏳ Awaiting Survey
+                        </span>
+                      )}
 
                       {/* Officer decision badge */}
                       {os && (
@@ -1292,8 +1304,14 @@ function ReportsBranch({ onBack, userProfile }) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleCalculateLarr(task)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                        disabled={!isSurveySubmitted}
+                        onClick={() => isSurveySubmitted && handleCalculateLarr(task)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          !isSurveySubmitted
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm cursor-pointer'
+                        }`}
+                        title={!isSurveySubmitted ? 'Surveyor has not submitted field verification details for this plot yet.' : 'Calculate RFCTLARR Statutory Compensation'}
                       >
                         🧮 Calculate Compensation
                       </button>
@@ -1316,18 +1334,28 @@ function ReportsBranch({ onBack, userProfile }) {
                         <div className="text-slate-500 mb-1">Base Circle Rate (₹/sq m)</div>
                         <input
                           type="number"
+                          disabled={!isSurveySubmitted}
                           value={circleRates[task.id] ?? ''}
                           onChange={(e) => setCircleRates({ ...circleRates, [task.id]: e.target.value })}
-                          className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded font-mono text-slate-800 font-bold outline-none focus:bg-white focus:border-blue-600 text-xs"
+                          className={`w-full px-2.5 py-1 rounded font-mono font-bold outline-none text-xs ${
+                            !isSurveySubmitted
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              : 'bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:border-blue-600'
+                          }`}
                           placeholder="Rate ₹/sq m"
                         />
                       </div>
                       <div>
                         <div className="text-slate-500 mb-1">Zone / RFCTLARR Multiplier</div>
                         <select
+                          disabled={!isSurveySubmitted}
                           value={zoneOverrides[task.id] || task.zoneType || (task.isRural ? 'RURAL' : 'URBAN')}
                           onChange={(e) => setZoneOverrides({ ...zoneOverrides, [task.id]: e.target.value })}
-                          className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded font-mono text-slate-800 font-semibold outline-none focus:bg-white focus:border-blue-600 text-xs cursor-pointer"
+                          className={`w-full px-2.5 py-1 rounded font-mono font-semibold outline-none text-xs ${
+                            !isSurveySubmitted
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              : 'bg-slate-50 border border-slate-200 text-slate-800 focus:bg-white focus:border-blue-600 cursor-pointer'
+                          }`}
                         >
                           <option value="URBAN">🏙️ Urban (1.2×)</option>
                           <option value="RURAL">🌾 Rural (2.0×)</option>
@@ -1362,6 +1390,16 @@ function ReportsBranch({ onBack, userProfile }) {
                     )}
                   </div>
 
+                  {/* Notice if survey has not yet been submitted */}
+                  {!isSurveySubmitted && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/80 border border-amber-200/80 text-amber-800 text-xs mb-3">
+                      <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>
+                        <strong>Awaiting Field Survey:</strong> Surveyor has not submitted on-site verification data for this plot. Compensation calculation and officer review actions will unlock once submitted.
+                      </span>
+                    </div>
+                  )}
+
                   {/* ── Remarks + Action buttons ── */}
                   <div className="pt-3 border-t border-slate-100 space-y-3">
                     {/* Action buttons row */}
@@ -1379,34 +1417,46 @@ function ReportsBranch({ onBack, userProfile }) {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleOfficerAction(task.id, 'Approved')}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            os === 'Approved'
-                              ? 'bg-emerald-600 text-white shadow-sm'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100'
+                          disabled={!isSurveySubmitted}
+                          onClick={() => isSurveySubmitted && handleOfficerAction(task.id, 'Approved')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            !isSurveySubmitted
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50 shadow-none'
+                              : os === 'Approved'
+                              ? 'bg-emerald-600 text-white shadow-sm cursor-pointer'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100 cursor-pointer'
                           }`}
+                          title={!isSurveySubmitted ? 'Surveyor has not submitted field verification details yet.' : 'Approve plot'}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" /> Approve
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleOfficerAction(task.id, 'Under Review')}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            os === 'Under Review'
-                              ? 'bg-amber-600 text-white shadow-sm'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200/60 hover:bg-amber-100'
+                          disabled={!isSurveySubmitted}
+                          onClick={() => isSurveySubmitted && handleOfficerAction(task.id, 'Under Review')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            !isSurveySubmitted
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50 shadow-none'
+                              : os === 'Under Review'
+                              ? 'bg-amber-600 text-white shadow-sm cursor-pointer'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200/60 hover:bg-amber-100 cursor-pointer'
                           }`}
+                          title={!isSurveySubmitted ? 'Surveyor has not submitted field verification details yet.' : 'Send plot for review'}
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Send for Review
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleOfficerAction(task.id, 'Rejected')}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            os === 'Rejected'
-                              ? 'bg-rose-600 text-white shadow-sm'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200/60 hover:bg-rose-100'
+                          disabled={!isSurveySubmitted}
+                          onClick={() => isSurveySubmitted && handleOfficerAction(task.id, 'Rejected')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            !isSurveySubmitted
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50 shadow-none'
+                              : os === 'Rejected'
+                              ? 'bg-rose-600 text-white shadow-sm cursor-pointer'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200/60 hover:bg-rose-100 cursor-pointer'
                           }`}
+                          title={!isSurveySubmitted ? 'Surveyor has not submitted field verification details yet.' : 'Reject plot'}
                         >
                           <XCircle className="w-3.5 h-3.5" /> Reject
                         </button>
@@ -1450,10 +1500,15 @@ function ReportsBranch({ onBack, userProfile }) {
                       </div>
                       <textarea
                         rows={2}
+                        disabled={!isSurveySubmitted}
                         value={officerRemarkDrafts[task.id] !== undefined ? officerRemarkDrafts[task.id] : (task.officerRemarks || '')}
                         onChange={(e) => handleOfficerRemarkChange(task.id, e.target.value)}
-                        placeholder="Add official notes, legal conditions, or valuation remarks for the RFCTLARR compensation award..."
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 resize-none transition-all"
+                        placeholder={!isSurveySubmitted ? 'Officer remarks will unlock once field survey is submitted...' : 'Add official notes, legal conditions, or valuation remarks for the RFCTLARR compensation award...'}
+                        className={`w-full px-3 py-2 rounded-lg text-xs resize-none transition-all ${
+                          !isSurveySubmitted
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed placeholder-slate-400'
+                            : 'bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600'
+                        }`}
                       />
                     </div>
                   </div>
