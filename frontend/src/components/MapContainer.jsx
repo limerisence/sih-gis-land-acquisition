@@ -159,15 +159,32 @@ export default function MapContainer() {
       const pid = feature.properties?.plotId;
       if (selectedFeature?.feature?.properties?.plotId === pid) return STYLE.landPlot.selected;
 
-      // Check if plot is officially approved
+      // Status-based highlighting: Green = Approved, Red = Rejected, Yellow = Under Review
       try {
         const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
         const task = tasks.find((t) => t.plotId === pid || t.id === pid);
-        if (task?.officerStatus === 'Approved' || task?.status === 'Approved' || feature.properties?.status === 'Approved' || feature.properties?.officerStatus === 'Approved') {
+        const st = task?.officerStatus || task?.status || feature.properties?.status || feature.properties?.officerStatus;
+        if (st === 'Approved') {
+          return {
+            fillColor: '#10B981',
+            fillOpacity: 0.35,
+            color: '#10B981', // Green Border for approved plots
+            weight: 3.5,
+          };
+        }
+        if (st === 'Rejected') {
           return {
             fillColor: '#EF4444',
-            fillOpacity: 0.45,
-            color: '#DC2626', // Bold Red Border for approved plots
+            fillOpacity: 0.40,
+            color: '#EF4444', // Red Border for rejected plots
+            weight: 3.5,
+          };
+        }
+        if (st === 'Under Review') {
+          return {
+            fillColor: '#F59E0B',
+            fillOpacity: 0.40,
+            color: '#F59E0B', // Yellow Border for review plots
             weight: 3.5,
           };
         }
@@ -193,23 +210,28 @@ export default function MapContainer() {
 
       // Resolve surveyor-verified owner name from localStorage if available
       let displayOwner = p.ownerName || '';
-      let isPlotApproved = false;
+      let statusTag = '';
       try {
         const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
         const task = tasks.find((t) => t.plotId === p.plotId || t.id === p.plotId);
         if (task?.surveyorOwnerName) {
           displayOwner = `${task.surveyorOwnerName} (Verified)`;
         }
-        if (task?.officerStatus === 'Approved' || task?.status === 'Approved' || p.status === 'Approved') {
-          isPlotApproved = true;
+        const st = task?.officerStatus || task?.status || p.status;
+        if (st === 'Approved') {
+          statusTag = '&nbsp;<span style="background:#D1FAE5;color:#065F46;padding:1px 6px;border-radius:10px;font-weight:700;font-size:9px;border:1px solid #10B981;">APPROVED</span>';
+        } else if (st === 'Rejected') {
+          statusTag = '&nbsp;<span style="background:#FEE2E2;color:#991B1B;padding:1px 6px;border-radius:10px;font-weight:700;font-size:9px;border:1px solid #EF4444;">REJECTED</span>';
+        } else if (st === 'Under Review') {
+          statusTag = '&nbsp;<span style="background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:10px;font-weight:700;font-size:9px;border:1px solid #F59E0B;">UNDER REVIEW</span>';
         }
       } catch (_) {}
 
       layer.bindTooltip(
         `<div style="font-size:11px;line-height:1.5;font-family:sans-serif;padding:3px 5px;max-width:240px;">
-          <strong style="color:${isPlotApproved ? '#DC2626' : (affected ? '#EF4444' : '#10b981')}">${p.plotId}</strong>
+          <strong style="color:${statusTag ? '#0f172a' : (affected ? '#EF4444' : '#10b981')}">${p.plotId}</strong>
           &nbsp;<span style="color:#64748b">${p.khasraNo || ''}</span>
-          ${isPlotApproved ? '&nbsp;<span style="background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:10px;font-weight:700;font-size:9px;border:1px solid #DC2626;">APPROVED</span>' : ''}<br/>
+          ${statusTag}<br/>
           <span style="color:#334155">${displayOwner}</span><br/>
           ${p.address ? `<span style="color:#64748b;font-size:10px">📍 ${p.address}</span><br/>` : ''}
           <span style="color:#2563eb;font-weight:700">${sqKm} sq km</span>

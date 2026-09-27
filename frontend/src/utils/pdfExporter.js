@@ -1,6 +1,10 @@
 /**
  * Post-Survey PDF Report Sync exporter module
  * Supports Master Corridor Export & Individual Plot RFCTLARR Award Certificate
+ * Color Scheme:
+ * - Approved: Green (#10B981)
+ * - Rejected: Red (#EF4444)
+ * - Under Review: Yellow (#F59E0B)
  */
 
 export function exportSinglePlotPDF(task = {}, project = {}) {
@@ -15,13 +19,16 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
   const isRejected = task.officerStatus === 'Rejected' || task.status === 'Rejected';
   const statusLabel = isApproved ? 'APPROVED' : isUnderReview ? 'UNDER REVIEW' : isRejected ? 'REJECTED' : 'PENDING REVIEW';
 
+  const themeColor = isApproved ? '#10B981' : isRejected ? '#EF4444' : isUnderReview ? '#F59E0B' : '#2563EB';
+  const themeBg = isApproved ? '#ECFDF5' : isRejected ? '#FEF2F2' : isUnderReview ? '#FFFBEB' : '#EFF6FF';
+  const themeText = isApproved ? '#065F46' : isRejected ? '#991B1B' : isUnderReview ? '#92400E' : '#1E40AF';
+
   const fin = task.larr_financials || {};
   const areaDisp = task.areaSqm ? `${Number(task.areaSqm).toLocaleString('en-IN')} sq m` : (task.areaSqKm ? `${(Number(task.areaSqKm) * 1000000).toLocaleString('en-IN')} sq m` : '—');
   const marketVal = fin.marketRate ? `₹${Number(fin.marketRate).toLocaleString('en-IN')}` : '—';
   const solatium = fin.solatium ? `₹${Number(fin.solatium).toLocaleString('en-IN')}` : '—';
   const assetVal = (task.assetValue || fin.assetValue) ? `₹${Number(task.assetValue || fin.assetValue).toLocaleString('en-IN')}` : '₹0';
   const baseRate = (task.baseCircleRateOverride || fin.baseCircleRate) ? `₹${Number(task.baseCircleRateOverride || fin.baseCircleRate).toLocaleString('en-IN')}/sq m` : '₹4,500/sq m';
-  const multVal = fin.multiplier ?? ((task.zoneType === 'RURAL' || task.isRural) ? 2.0 : 1.2);
   const totalAward = fin.totalAward ? `₹${Number(fin.totalAward).toLocaleString('en-IN')}` : 'Pending Calculation';
 
   const dateStr = new Date().toLocaleDateString('en-IN', {
@@ -36,22 +43,22 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 35px; color: #0f172a; background: #fff; }
           .certificate-container {
-            border: ${isApproved ? '3px solid #DC2626' : '2px solid #2563EB'};
+            border: 3px solid ${themeColor};
             border-radius: 12px;
             padding: 30px;
             position: relative;
             background: #ffffff;
-            box-shadow: ${isApproved ? '0 0 0 4px #FEE2E2' : 'none'};
+            box-shadow: 0 0 0 4px ${themeBg};
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 2px solid ${isApproved ? '#DC2626' : '#2563EB'};
+            border-bottom: 2px solid ${themeColor};
             padding-bottom: 20px;
             margin-bottom: 25px;
           }
-          .title { font-size: 22px; font-weight: 800; color: ${isApproved ? '#991B1B' : '#1E3A8A'}; margin: 0; }
+          .title { font-size: 22px; font-weight: 800; color: ${themeText}; margin: 0; }
           .subtitle { font-size: 13px; color: #475569; margin-top: 4px; }
           .badge {
             display: inline-block;
@@ -61,13 +68,9 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            ${isApproved
-              ? 'background-color: #FEF2F2; color: #DC2626; border: 2px solid #DC2626;'
-              : isUnderReview
-              ? 'background-color: #FEF3C7; color: #B45309; border: 2px solid #D97706;'
-              : isRejected
-              ? 'background-color: #FEE2E2; color: #991B1B; border: 2px solid #DC2626;'
-              : 'background-color: #F1F5F9; color: #475569; border: 2px solid #94A3B8;'}
+            background-color: ${themeBg};
+            color: ${themeText};
+            border: 2px solid ${themeColor};
           }
           .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
           .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
@@ -75,8 +78,8 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
           .row-label { color: #64748b; font-weight: 500; }
           .row-val { font-weight: 700; color: #0f172a; }
           .award-box {
-            background: ${isApproved ? '#FEF2F2' : '#F0FDF4'};
-            border: 2px solid ${isApproved ? '#DC2626' : '#16A34A'};
+            background: ${themeBg};
+            border: 2px solid ${themeColor};
             border-radius: 8px;
             padding: 18px 24px;
             display: flex;
@@ -84,7 +87,7 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
             align-items: center;
             margin: 25px 0;
           }
-          .award-amount { font-size: 26px; font-weight: 900; color: ${isApproved ? '#B91C1C' : '#15803D'}; font-family: monospace; }
+          .award-amount { font-size: 26px; font-weight: 900; color: ${themeText}; font-family: monospace; }
           .remarks-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 30px; font-size: 13px; }
           .footer-sign { display: flex; justify-content: space-between; margin-top: 50px; font-size: 12px; color: #475569; }
           .sign-line { border-top: 1px solid #0f172a; width: 200px; padding-top: 6px; text-align: center; }
@@ -99,7 +102,7 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
           <div class="header">
             <div>
               <h1 class="title">BHOOMI GIS LAND ACQUISITION & RFCTLARR VALUATION</h1>
-              <div class="subtitle">Competent Authority & Municipal Officer Final Sanctioned Award Certificate</div>
+              <div class="subtitle">Competent Authority & Municipal Officer Sanctioned Award Certificate</div>
               <div style="font-size: 11px; color: #64748b; margin-top: 4px; font-family: monospace;">
                 Project: <strong>${project.project_name || task.projectName || 'Infrastructure Corridor'}</strong> (${project.project_id || task.projectId || 'PRJ-MASTER'})
               </div>
@@ -154,8 +157,8 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
 
           <div class="award-box">
             <div>
-              <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: ${isApproved ? '#991B1B' : '#15803D'};">
-                ${isApproved ? 'SANCTIONED COMPENSATION AWARD (APPROVED)' : 'ESTIMATED TOTAL RFCTLARR AWARD'}
+              <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: ${themeText};">
+                ${isApproved ? 'SANCTIONED COMPENSATION AWARD (APPROVED)' : isRejected ? 'COMPENSATION PROPOSAL (REJECTED)' : 'ESTIMATED TOTAL RFCTLARR AWARD'}
               </div>
               <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
                 Subject to treasury disbursement to verified Aadhaar-linked beneficiary account.
@@ -167,7 +170,7 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
           <div class="remarks-box">
             <strong style="color: #0f172a;">Official Officer Award Remarks:</strong>
             <p style="margin: 6px 0 0 0; color: #334155;">
-              ${task.officerRemarks || task.reviewRemarks || 'Plot verified on-ground by surveyor team and reviewed according to West Bengal Land Acquisition Rules under RFCTLARR 2013.'}
+              ${task.officerRemarks || task.reviewRemarks || 'Plot reviewed according to West Bengal Land Acquisition Rules under RFCTLARR 2013.'}
             </p>
           </div>
 
@@ -176,9 +179,9 @@ export function exportSinglePlotPDF(task = {}, project = {}) {
               <strong>Surveyor In-Charge</strong><br/>
               Field Verification & GPS Geofence
             </div>
-            <div class="sign-line" style="${isApproved ? 'border-top: 2px solid #DC2626;' : ''}">
-              <strong style="${isApproved ? 'color: #DC2626;' : ''}">Competent Municipal Officer</strong><br/>
-              ${isApproved ? 'APPROVED & SANCTIONED' : 'Under Assessment'}
+            <div class="sign-line" style="border-top: 2px solid ${themeColor};">
+              <strong style="color: ${themeText};">Competent Municipal Officer</strong><br/>
+              ${isApproved ? 'APPROVED & SANCTIONED' : isRejected ? 'REJECTED' : 'Under Assessment'}
             </div>
           </div>
         </div>
@@ -221,23 +224,31 @@ export function exportPDF(project = {}, tasks = []) {
 
   const rowsHtml = tasks.map((task, idx) => {
     const isApproved = task.officerStatus === 'Approved' || task.status === 'Approved';
-    const status = isApproved ? 'Approved' : (task.officerStatus || task.status || 'Pending');
+    const isRejected = task.officerStatus === 'Rejected' || task.status === 'Rejected';
+    const isReview = task.officerStatus === 'Under Review' || task.status === 'Under Review';
 
-    let statusBg = '#FEF3C7';
-    let statusColor = '#92400E';
+    let status = isApproved ? 'Approved' : isRejected ? 'Rejected' : isReview ? 'Under Review' : (task.status || 'Pending');
+
+    let statusBg = '#F1F5F9';
+    let statusColor = '#475569';
     let borderAccent = '';
+    let statusIndicator = '';
 
     if (isApproved) {
-      statusBg = '#DC2626';
-      statusColor = '#FFFFFF';
-      // Approved plots highlighted with prominent red border
-      borderAccent = 'border-left: 6px solid #DC2626; border-top: 1px solid #FCA5A5; border-bottom: 1px solid #FCA5A5; background-color: #FEF2F2 !important;';
-    } else if (status === 'Under Review') {
-      statusBg = '#E0F2FE';
-      statusColor = '#075985';
-    } else if (status === 'Rejected') {
+      statusBg = '#D1FAE5';
+      statusColor = '#065F46';
+      borderAccent = 'border-left: 6px solid #10B981; border-top: 1px solid #A7F3D0; border-bottom: 1px solid #A7F3D0; background-color: #ECFDF5 !important;';
+      statusIndicator = '<span style="color: #059669; font-size: 10px; display: block; font-weight: 800;">🟢 APPROVED PLOT</span>';
+    } else if (isRejected) {
       statusBg = '#FEE2E2';
       statusColor = '#991B1B';
+      borderAccent = 'border-left: 6px solid #EF4444; border-top: 1px solid #FECACA; border-bottom: 1px solid #FECACA; background-color: #FEF2F2 !important;';
+      statusIndicator = '<span style="color: #DC2626; font-size: 10px; display: block; font-weight: 800;">🔴 REJECTED PLOT</span>';
+    } else if (isReview) {
+      statusBg = '#FEF3C7';
+      statusColor = '#92400E';
+      borderAccent = 'border-left: 6px solid #F59E0B; border-top: 1px solid #FDE68A; border-bottom: 1px solid #FDE68A; background-color: #FFFBEB !important;';
+      statusIndicator = '<span style="color: #D97706; font-size: 10px; display: block; font-weight: 800;">🟡 UNDER REVIEW</span>';
     }
 
     const areaDisp = task.areaSqm ? `${Number(task.areaSqm).toLocaleString('en-IN')} sq m` : (task.areaSqKm ? `${task.areaSqKm} sq km` : '—');
@@ -256,7 +267,7 @@ export function exportPDF(project = {}, tasks = []) {
     return `
       <tr style="border-bottom: 1px solid #E5E7EB; ${borderAccent} background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB'};">
         <td style="padding: 10px; font-weight: bold;">
-          ${isApproved ? '<span style="color: #DC2626; font-size: 10px; display: block; font-weight: 800;">● APPROVED PLOT</span>' : ''}
+          ${statusIndicator}
           ${task.plotId || '—'}<br/>
           <span style="font-size: 10px; font-weight: normal; color: #6B7280;">${task.khasraNo ? `Khasra: ${task.khasraNo}` : 'Khasra: Unverified'}</span>
         </td>
@@ -269,7 +280,7 @@ export function exportPDF(project = {}, tasks = []) {
         <td style="padding: 10px; font-family: monospace;">${areaDisp}</td>
         <td style="padding: 10px; font-family: monospace; color: #B45309;">${assetVal}</td>
         <td style="padding: 10px; font-family: monospace;">${baseRate}</td>
-        <td style="padding: 10px; font-weight: bold; font-family: monospace; color: ${isApproved ? '#DC2626' : '#047857'}; font-size: 13px;">${totalAward}</td>
+        <td style="padding: 10px; font-weight: bold; font-family: monospace; color: ${isApproved ? '#059669' : isRejected ? '#DC2626' : '#2563EB'}; font-size: 13px;">${totalAward}</td>
         <td style="padding: 10px;">
           <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 800; background-color: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}40;">
             ${status}
@@ -317,20 +328,20 @@ export function exportPDF(project = {}, tasks = []) {
         </div>
 
         <div class="stats-bar">
-          <div class="stat-item" style="border: 2px solid #DC2626; border-radius: 6px; background: #FEF2F2;">
-            <div class="stat-value" style="color: #DC2626;">${approvedCount}</div>
-            <div class="stat-label" style="color: #DC2626; font-weight: 700;">Approved (Red Highlight)</div>
+          <div class="stat-item" style="border: 2px solid #10B981; border-radius: 6px; background: #ECFDF5;">
+            <div class="stat-value" style="color: #059669;">${approvedCount}</div>
+            <div class="stat-label" style="color: #059669; font-weight: 700;">Approved (Green)</div>
+          </div>
+          <div class="stat-item" style="border: 2px solid #F59E0B; border-radius: 6px; background: #FFFBEB;">
+            <div class="stat-value" style="color: #D97706;">${reviewCount}</div>
+            <div class="stat-label" style="color: #D97706; font-weight: 700;">Under Review (Yellow)</div>
+          </div>
+          <div class="stat-item" style="border: 2px solid #EF4444; border-radius: 6px; background: #FEF2F2;">
+            <div class="stat-value" style="color: #DC2626;">${rejectedCount}</div>
+            <div class="stat-label" style="color: #DC2626; font-weight: 700;">Rejected (Red)</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value" style="color: #0284C7;">${reviewCount}</div>
-            <div class="stat-label">Under Review</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" style="color: #991B1B;">${rejectedCount}</div>
-            <div class="stat-label">Rejected</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" style="color: #D97706;">${pendingCount}</div>
+            <div class="stat-value" style="color: #64748b;">${pendingCount}</div>
             <div class="stat-label">Pending Action</div>
           </div>
         </div>
@@ -360,7 +371,7 @@ export function exportPDF(project = {}, tasks = []) {
 
         <div class="footer">
           <div>Bhoomi GIS Portal — Official Statutory Verification (RFCTLARR Act 2013)</div>
-          <div>All Approved plots highlighted with red borders and official sanctioned awards.</div>
+          <div>Color Indicators: Green = Approved, Yellow = Under Review, Red = Rejected.</div>
         </div>
 
         <script>

@@ -1134,15 +1134,21 @@ function ReportsBranch({ onBack, userProfile }) {
               const os = task.officerStatus;
               const osMeta = OFFICER_STATUS_STYLE[os];
               const isApproved = os === 'Approved' || task.status === 'Approved';
+              const isRejected = os === 'Rejected' || task.status === 'Rejected';
+              const isReview = os === 'Under Review' || task.status === 'Under Review';
+
+              const borderStyle = isApproved
+                ? 'border-2 border-emerald-500 ring-2 ring-emerald-100 shadow-md shadow-emerald-50'
+                : isRejected
+                ? 'border-2 border-rose-500 ring-2 ring-rose-100 shadow-md shadow-rose-50'
+                : isReview
+                ? 'border-2 border-amber-400 ring-2 ring-amber-100 shadow-md shadow-amber-50'
+                : 'border border-slate-200';
 
               return (
                 <div
                   key={task.id}
-                  className={`p-5 rounded-xl bg-white shadow-sm hover:shadow-md transition-all ${
-                    isApproved
-                      ? 'border-2 border-red-500 ring-2 ring-red-100 shadow-md shadow-red-50'
-                      : 'border border-slate-200'
-                  }`}
+                  className={`p-5 rounded-xl bg-white shadow-sm hover:shadow-md transition-all ${borderStyle}`}
                 >
                   {/* Plot header row */}
                   <div className="flex items-start justify-between gap-4 mb-3">
@@ -1158,8 +1164,12 @@ function ReportsBranch({ onBack, userProfile }) {
                       {/* Survey status */}
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          task.status === 'Approved'
-                            ? 'bg-red-50 text-red-700 border border-red-300 font-bold'
+                          isApproved
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold'
+                            : isRejected
+                            ? 'bg-rose-50 text-rose-700 border border-rose-300 font-bold'
+                            : isReview
+                            ? 'bg-amber-50 text-amber-700 border border-amber-300 font-bold'
                             : task.status === 'Completed'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                             : 'bg-amber-50 text-amber-700 border border-amber-200/60'
@@ -1176,8 +1186,18 @@ function ReportsBranch({ onBack, userProfile }) {
                       )}
 
                       {isApproved && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300 flex items-center gap-1">
-                          🔴 Approved Plot
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 flex items-center gap-1">
+                          🟢 Approved
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-300 flex items-center gap-1">
+                          🔴 Rejected
+                        </span>
+                      )}
+                      {isReview && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-300 flex items-center gap-1">
+                          🟡 Under Review
                         </span>
                       )}
                     </div>

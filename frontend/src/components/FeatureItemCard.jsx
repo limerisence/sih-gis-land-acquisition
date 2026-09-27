@@ -52,32 +52,41 @@ export default function FeatureItemCard({ feature }) {
     return 'bg-amber-50 text-amber-700 border-amber-200/60';
   };
 
-  // Check if plot is officially approved
+  // Check plot status
   let isApproved = p.status === 'Approved' || p.officerStatus === 'Approved';
+  let isRejected = p.status === 'Rejected' || p.officerStatus === 'Rejected';
+  let isReview = p.status === 'Under Review' || p.officerStatus === 'Under Review';
   try {
     const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
     const task = tasks.find((t) => t.plotId === p.plotId || t.id === p.plotId);
-    if (task?.officerStatus === 'Approved' || task?.status === 'Approved') isApproved = true;
+    const st = task?.officerStatus || task?.status;
+    if (st === 'Approved') { isApproved = true; isRejected = false; isReview = false; }
+    else if (st === 'Rejected') { isApproved = false; isRejected = true; isReview = false; }
+    else if (st === 'Under Review') { isApproved = false; isRejected = false; isReview = true; }
   } catch (_) {}
+
+  const cardBorder = isApproved
+    ? 'border-2 border-emerald-500 bg-emerald-50/20 ring-2 ring-emerald-100 shadow-sm'
+    : isRejected
+    ? 'border-2 border-rose-500 bg-rose-50/25 ring-2 ring-rose-100 shadow-sm'
+    : isReview
+    ? 'border-2 border-amber-400 bg-amber-50/25 ring-2 ring-amber-100 shadow-sm'
+    : isSelected
+    ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-100 shadow-sm'
+    : isAffected
+    ? 'border-rose-200/80 bg-rose-50/20 hover:border-rose-300 hover:shadow-xs'
+    : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs';
 
   return (
     <div
       onClick={() => focusOnFeature(feature, 'plot', 17)}
-      className={`p-3.5 rounded-xl cursor-pointer transition-all border group relative ${
-        isApproved
-          ? 'border-2 border-red-500 bg-red-50/25 ring-2 ring-red-100 shadow-sm'
-          : isSelected
-          ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-100 shadow-sm'
-          : isAffected
-          ? 'border-rose-200/80 bg-rose-50/20 hover:border-rose-300 hover:shadow-xs'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
-      }`}
+      className={`p-3.5 rounded-xl cursor-pointer transition-all border group relative ${cardBorder}`}
     >
       {/* Top row: Plot ID, Khasra/Dag No, Category, HIT */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap mb-1">
-            <span className={`font-bold text-xs font-mono ${isApproved ? 'text-red-700' : isAffected ? 'text-rose-600' : 'text-slate-900'}`}>
+            <span className={`font-bold text-xs font-mono ${isApproved ? 'text-emerald-700' : isRejected ? 'text-rose-700' : isReview ? 'text-amber-700' : isAffected ? 'text-rose-600' : 'text-slate-900'}`}>
               {p.plotId}
             </span>
             <span className="text-[11px] text-slate-600 font-mono font-semibold">
@@ -88,8 +97,18 @@ export default function FeatureItemCard({ feature }) {
               {p.landCategory || 'Pending Survey'}
             </span>
             {isApproved && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-red-100 text-red-700 border border-red-300">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                 APPROVED
+              </span>
+            )}
+            {isRejected && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                REJECTED
+              </span>
+            )}
+            {isReview && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                UNDER REVIEW
               </span>
             )}
             {p.isSyntheticCadastre && (
