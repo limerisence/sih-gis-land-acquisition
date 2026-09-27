@@ -1,32 +1,27 @@
 import React, { useState, useMemo } from 'react';
-import { Search, CheckCircle2, Building2, Trees, MapPin } from 'lucide-react';
-import { useGIS, isLandPlot } from '../context/GISContext';
+import { Search, CheckCircle2, Trees, MapPin, Layers } from 'lucide-react';
+import { useGIS } from '../context/GISContext';
 import FeatureItemCard from './FeatureItemCard';
 
 export default function FeatureList() {
   const {
     isCalculated,
     affectedPlots,
-    affectedBuildings,
     allFeatures
   } = useGIS();
 
-  const [activeTab, setActiveTab] = useState('plots'); // 'plots' | 'buildings'
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Choose list source
-  const rawList = isCalculated
-    ? activeTab === 'plots'
-      ? affectedPlots
-      : affectedBuildings
-    : allFeatures.filter((f) => (activeTab === 'plots' ? isLandPlot(f) : !isLandPlot(f)));
+  // 100% focused on Cadastral Land Plots
+  const rawList = isCalculated ? affectedPlots : allFeatures;
 
-  // Total area in sq km for current active tab
-  const totalTabAreaSqM = useMemo(() => {
-    return rawList.reduce((acc, f) => acc + (f.properties?.landAreaSqM || 0), 0);
+  // Total area in sq km for plots
+  const totalAreaSqM = useMemo(() => {
+    return rawList.reduce((acc, f) => acc + (f.properties?.intersectedAreaSqM || f.properties?.landAreaSqM || 0), 0);
   }, [rawList]);
 
-  const totalTabAreaSqKm = (totalTabAreaSqM / 1_000_000).toFixed(4);
+  const totalAreaSqKm = (totalAreaSqM / 1_000_000).toFixed(4);
+  const totalAreaAcres = (totalAreaSqM / 4046.856).toFixed(2);
 
   // Filter by search query
   const filteredList = useMemo(() => {
@@ -49,37 +44,19 @@ export default function FeatureList() {
 
   return (
     <div className="flex flex-col bg-white">
-      {/* Sub-tabs: Land Plots vs Buildings */}
-      <div className="sticky top-0 z-10 flex shrink-0 border-b border-slate-200 bg-white">
-        <button
-          type="button"
-          onClick={() => setActiveTab('plots')}
-          className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border-b-2 cursor-pointer ${
-            activeTab === 'plots'
-              ? 'border-blue-600 text-blue-700 bg-blue-50/40'
-              : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Trees className="w-3.5 h-3.5" />
-          <span>
-            Land Plots ({isCalculated ? affectedPlots.length : allFeatures.filter(isLandPlot).length})
+      {/* Cadastral Land Plots Section Header */}
+      <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Trees className="w-4 h-4 text-emerald-600" />
+          <span className="font-bold text-xs uppercase tracking-wider text-slate-800">
+            Cadastral Parcels ({isCalculated ? affectedPlots.length : allFeatures.length})
           </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('buildings')}
-          className={`flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border-b-2 cursor-pointer ${
-            activeTab === 'buildings'
-              ? 'border-blue-600 text-blue-700 bg-blue-50/40'
-              : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Building2 className="w-3.5 h-3.5" />
-          <span>
-            Buildings ({isCalculated ? affectedBuildings.length : allFeatures.filter((f) => !isLandPlot(f)).length})
+        </div>
+        {isCalculated && (
+          <span className="text-[11px] font-mono font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200/60">
+            {affectedPlots.length} Hit
           </span>
-        </button>
+        )}
       </div>
 
       {/* Surveyor Inspection Header Bar */}
@@ -89,7 +66,7 @@ export default function FeatureList() {
           Surveyor Field Dossier:
         </span>
         <span className="font-mono text-slate-900 font-bold">
-          {totalTabAreaSqKm} sq km
+          {totalAreaSqKm} sq km <span className="text-slate-500 font-normal">({totalAreaAcres} Ac)</span>
         </span>
       </div>
 
@@ -99,7 +76,7 @@ export default function FeatureList() {
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search Plot ID, Khasra, Address, Owner…"
+            placeholder="Search Plot ID, Dag/Khasra, Address, Owner…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600"
@@ -111,7 +88,7 @@ export default function FeatureList() {
       <div className="p-3 space-y-2.5">
         {!isCalculated && filteredList.length === 0 && (
           <div className="p-6 text-center text-xs text-slate-500 rounded-xl border border-dashed border-slate-200 bg-slate-50/70">
-            <MapPin className="w-7 h-7 text-blue-500/60 mx-auto mb-2" />
+            <Layers className="w-7 h-7 text-blue-500/60 mx-auto mb-2" />
             <p className="font-semibold text-slate-700">No plots loaded</p>
             <p className="text-[11px] text-slate-400 mt-1">
               Place at least 2 points along an alignment and click <span className="text-blue-600 font-semibold">Calculate Corridor Impact</span>.
@@ -122,7 +99,7 @@ export default function FeatureList() {
         {isCalculated && filteredList.length === 0 && (
           <div className="p-8 text-center text-xs text-slate-500 rounded-xl border border-dashed border-slate-200 bg-slate-50/70">
             <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-80" />
-            No {activeTab === 'plots' ? 'land plots' : 'buildings'} intersect this corridor.
+            No cadastral land plots match the search query.
           </div>
         )}
 

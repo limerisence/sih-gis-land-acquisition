@@ -30,8 +30,11 @@ export default async function handler(req, res) {
 
   const query = `[out:json][timeout:20];
 (
-  way["building"](${south},${west},${north},${east});
   way["landuse"](${south},${west},${north},${east});
+  way["leisure"](${south},${west},${north},${east});
+  way["boundary"="cadastral"](${south},${west},${north},${east});
+  way["place"](${south},${west},${north},${east});
+  way["amenity"](${south},${west},${north},${east});
   relation["landuse"](${south},${west},${north},${east});
 );
 out geom 500;`;

@@ -1,12 +1,11 @@
 import React from 'react';
-import { AlertTriangle, Route, Ruler } from 'lucide-react';
+import { AlertTriangle, Route, Ruler, Layers } from 'lucide-react';
 import { useGIS } from '../context/GISContext';
 
 export default function ImpactSummaryCard() {
   const {
     summary,
     affectedPlots,
-    affectedBuildings,
     bufferWidthMeters
   } = useGIS();
 
@@ -14,17 +13,20 @@ export default function ImpactSummaryCard() {
 
   const lengthKm = summary.totalLengthKm ?? 0;
   const lengthMeters = summary.totalLengthMeters ?? Math.round(lengthKm * 1000);
-  const areaHa = ((summary.totalAreaSqM || 0) / 10000).toFixed(2);
+  const totalSqM = summary.totalAreaSqM || 0;
+  const areaHa = (totalSqM / 10000).toFixed(2);
+  const areaAcres = (totalSqM / 4046.856).toFixed(2);
+  const areaSqKm = ((totalSqM) / 1_000_000).toFixed(4);
 
   return (
     <div className="p-4 border-b border-slate-100 bg-white shrink-0 space-y-2.5">
       {/* Header bar */}
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase font-bold tracking-wider text-slate-500 flex items-center gap-1.5">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Statutory Impact Summary
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Cadastral Impact Dossier
         </span>
         <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60">
-          {summary.totalPlots} Total Features Hit
+          {affectedPlots.length} Parcels Intersected
         </span>
       </div>
 
@@ -46,45 +48,45 @@ export default function ImpactSummaryCard() {
         </div>
       </div>
 
-      {/* Dual Breakdown: Land Plots vs Buildings */}
+      {/* Cadastral Parcels & Surface Overview */}
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2.5 rounded-xl border border-rose-200/60 bg-rose-50/40 text-xs">
-          <div className="text-[10px] uppercase tracking-wider font-bold mb-0.5 text-rose-700">
-            Land Plots
+          <div className="text-[10px] uppercase tracking-wider font-bold mb-0.5 text-rose-700 flex items-center gap-1">
+            <Layers className="w-3 h-3 text-rose-600" /> Affected Parcels
           </div>
           <div className="text-xl font-bold text-slate-900">{affectedPlots.length}</div>
-          <div className="text-[11px] text-slate-500">parcels intersected</div>
+          <div className="text-[11px] text-slate-500">continuous cadastre</div>
         </div>
 
-        <div className="p-2.5 rounded-xl border border-amber-200/60 bg-amber-50/40 text-xs">
-          <div className="text-[10px] uppercase tracking-wider font-bold mb-0.5 text-amber-700">
-            Buildings
+        <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs">
+          <div className="text-[10px] uppercase tracking-wider font-bold mb-0.5 text-slate-600 flex items-center gap-1">
+            <Ruler className="w-3 h-3 text-slate-500" /> Total Acres
           </div>
-          <div className="text-xl font-bold text-slate-900">{affectedBuildings.length}</div>
-          <div className="text-[11px] text-slate-500">structures intersected</div>
+          <div className="text-xl font-bold text-slate-900 font-mono">{areaAcres}</div>
+          <div className="text-[11px] text-slate-500">{areaHa} Hectares</div>
         </div>
       </div>
 
-      {/* Land Area in sq km and m² */}
+      {/* Metric Area Breakdown */}
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block flex items-center gap-1">
-            <Ruler className="w-3 h-3 text-slate-500" /> Area (sq km)
+            <Ruler className="w-3 h-3 text-slate-500" /> Surface (sq km)
           </span>
           <div className="text-sm font-bold text-slate-900 mt-0.5 font-mono">
-            {((summary.totalAreaSqM || 0) / 1_000_000).toFixed(4)} sq km
+            {areaSqKm} sq km
           </div>
-          <span className="text-[10px] text-slate-400 font-medium">Corridor surface</span>
+          <span className="text-[10px] text-slate-400 font-medium">Corridor envelope</span>
         </div>
 
         <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold block flex items-center gap-1">
-            <Ruler className="w-3 h-3 text-slate-500" /> Metric Area
+            <Ruler className="w-3 h-3 text-slate-500" /> Surface (m²)
           </span>
           <div className="text-sm font-bold text-slate-900 mt-0.5 font-mono">
-            {(summary.totalAreaSqM || 0).toLocaleString()} m²
+            {totalSqM.toLocaleString()} m²
           </div>
-          <span className="text-[11px] text-slate-500 font-medium">{areaHa} Ha</span>
+          <span className="text-[11px] text-slate-500 font-medium">Cadastral area</span>
         </div>
       </div>
     </div>

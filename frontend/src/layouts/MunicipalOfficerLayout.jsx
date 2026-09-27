@@ -624,7 +624,7 @@ function CommandHub({ onBranch, userProfile }) {
 // BRANCH 1 — Create New Project (GIS Canvas)
 // ════════════════════════════════════════════════════════════════════════════════
 function GISBranch({ onBack, userProfile }) {
-  const { affectedPlots, affectedBuildings, isCalculated, showToast } = useGIS();
+  const { affectedPlots, isCalculated, showToast } = useGIS();
   const [projectName, setProjectName] = useState('');
   const [dispatchedIds, setDispatchedIds] = useState(() => new Set(loadTasks().map((t) => t.plotId)));
   const [lastProjectId, setLastProjectId] = useState(null);
@@ -634,7 +634,7 @@ function GISBranch({ onBack, userProfile }) {
     Agricultural: 2200,
   });
 
-  const totalAffected = affectedPlots.length + affectedBuildings.length;
+  const totalAffected = affectedPlots.length;
   const canSend = isCalculated && totalAffected > 0 && projectName.trim().length > 0;
 
   const handleSendAll = useCallback(() => {
@@ -644,7 +644,7 @@ function GISBranch({ onBack, userProfile }) {
     }
     const pid = genProjectId();
     const now = new Date().toISOString();
-    const all = [...affectedPlots, ...affectedBuildings];
+    const all = [...affectedPlots];
     const existing = loadTasks();
     const existingIds = new Set(existing.map((t) => t.plotId));
 
@@ -717,7 +717,7 @@ function GISBranch({ onBack, userProfile }) {
     setDispatchedIds(new Set([...existing.map((t) => t.plotId), ...newTasks.map((t) => t.plotId)]));
     setLastProjectId(pid);
     showToast(`✅ Project ${pid} created — ${newTasks.length} plots dispatched.`, 'success');
-  }, [projectName, baseRates, affectedPlots, affectedBuildings, userProfile, showToast]);
+  }, [projectName, baseRates, affectedPlots, userProfile, showToast]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">

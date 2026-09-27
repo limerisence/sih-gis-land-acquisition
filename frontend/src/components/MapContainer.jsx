@@ -31,14 +31,9 @@ L.Icon.Default.mergeOptions({
 // Styling constants
 const STYLE = {
   landPlot: {
-    unaffected: { fillColor: '#10b981', fillOpacity: 0.18, color: '#059669', weight: 1.2 },
-    affected: { fillColor: '#FF4136', fillOpacity: 0.50, color: '#cc1a10', weight: 1.5 },
-    selected: { fillColor: '#f97316', fillOpacity: 0.70, color: '#ea580c', weight: 3 },
-  },
-  building: {
-    unaffected: { fillColor: '#6b7280', fillOpacity: 0.22, color: '#4b5563', weight: 1 },
-    affected: { fillColor: '#FFD700', fillOpacity: 0.80, color: '#F9A602', weight: 2.0 },
-    selected: { fillColor: '#fb923c', fillOpacity: 0.92, color: '#f97316', weight: 2.5 },
+    unaffected: { fillColor: '#10b981', fillOpacity: 0.15, color: '#059669', weight: 1.2 },
+    affected: { fillColor: '#EF4444', fillOpacity: 0.45, color: '#DC2626', weight: 2 },
+    selected: { fillColor: '#2563eb', fillOpacity: 0.65, color: '#1d4ed8', weight: 3 },
   },
   buffer: { fillColor: '#3b82f6', fillOpacity: 0.35, color: '#1d4ed8', weight: 2.5 },
 };
@@ -84,10 +79,24 @@ function MapClickHandler({ onMapClick, enabled }) {
 }
 
 // Map camera controller: reads mapFocusTarget from GIS context for flyTo,
-// and resets to Kolkata center on resetCount change.
+// auto-zooms to fit affected plots on calculation, and resets to Kolkata center.
 function MapCameraController({ resetTrigger }) {
   const map = useMap();
-  const { mapFocusTarget, selectedFeature } = useGIS();
+  const { mapFocusTarget, selectedFeature, isCalculated, affectedPlots } = useGIS();
+
+  // Auto-zoom and fit bounds to all highlighted affected red plots when analysis completes
+  useEffect(() => {
+    if (isCalculated && affectedPlots.length > 0) {
+      try {
+        const fc = turf.featureCollection(affectedPlots);
+        const bbox = turf.bbox(fc);
+        map.flyToBounds(
+          [[bbox[1], bbox[0]], [bbox[3], bbox[2]]],
+          { padding: [60, 60], maxZoom: 18, duration: 1.2 }
+        );
+      } catch (_) {}
+    }
+  }, [isCalculated, affectedPlots, map]);
 
   // Fly to explicit lat/lng point when sidebar card is clicked
   useEffect(() => {
@@ -127,11 +136,8 @@ export default function MapContainer() {
     addPoint,
     removePoint,
     landPlotFC,
-    buildingFC,
     affectedPlots,
-    affectedBuildings,
     affectedPlotIds,
-    affectedBuildingIds,
     bridgeBuffer,
     bufferVersion,
     bufferWidthMeters,
@@ -139,7 +145,6 @@ export default function MapContainer() {
     setSelectedFeature,
     inspectFeature,
     landVersion,
-    buildingVersion,
     resetCount
   } = useGIS();
 
@@ -192,13 +197,13 @@ export default function MapContainer() {
 
       layer.bindTooltip(
         `<div style="font-size:11px;line-height:1.5;font-family:sans-serif;padding:3px 5px;max-width:240px;">
-          <strong style="color:${affected ? '#FF4136' : '#10b981'}">${p.plotId}</strong>
-          &nbsp;<span style="color:#94a3b8">${p.khasraNo || ''}</span><br/>
-          <span style="color:#cbd5e1">${displayOwner}</span><br/>
+          <strong style="color:${affected ? '#EF4444' : '#10b981'}">${p.plotId}</strong>
+          &nbsp;<span style="color:#64748b">${p.khasraNo || ''}</span><br/>
+          <span style="color:#334155">${displayOwner}</span><br/>
           ${p.address ? `<span style="color:#64748b;font-size:10px">📍 ${p.address}</span><br/>` : ''}
-          <span style="color:#34d399;font-weight:700">${sqKm} sq km</span>
-          <span style="color:#94a3b8">(${(p.landAreaSqM || 0).toLocaleString()} m² · ${p.landCategory})</span>
-          ${affected ? '<br/><span style="color:#FF4136;font-weight:700">⬛ AFFECTED LAND PARCEL</span>' : ''}
+          <span style="color:#2563eb;font-weight:700">${sqKm} sq km</span>
+          <span style="color:#64748b">(${((p.landAreaSqM || 0)).toLocaleString()} m² · ${p.landCategory})</span>
+          ${affected ? `<br/><span style="color:#EF4444;font-weight:700">⬛ AFFECTED PARCEL (${(p.intersectedAreaSqM || p.landAreaSqM || 0).toLocaleString()} m²)</span>` : ''}
         </div>`,
         { sticky: true, opacity: 0.95 }
       );
@@ -206,40 +211,6 @@ export default function MapContainer() {
     [affectedPlotIds, setSelectedFeature, inspectFeature]
   );
 
-  const bindBuildingFeature = useCallback(
-    (feature, layer) => {
-      layer.on({
-        click: () => setSelectedFeature({ feature, kind: 'building' }),
-        dblclick: () => inspectFeature(feature, 'building')
-      });
-      const p = feature.properties || {};
-      const affected = affectedBuildingIds.has(p.plotId);
-      const sqKm = ((p.landAreaSqM || 0) / 1000000).toFixed(6);
-
-      let displayOwner = p.ownerName || '';
-      try {
-        const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
-        const task = tasks.find((t) => t.plotId === p.plotId);
-        if (task?.surveyorOwnerName) {
-          displayOwner = `${task.surveyorOwnerName} (Verified)`;
-        }
-      } catch (_) {}
-
-      layer.bindTooltip(
-        `<div style="font-size:11px;line-height:1.5;font-family:sans-serif;padding:3px 5px;max-width:240px;">
-          <strong style="color:${affected ? '#FFD700' : '#9ca3af'}">[Building] ${p.plotId}</strong>
-          &nbsp;<span style="color:#94a3b8">${p.khasraNo || ''}</span><br/>
-          <span style="color:#cbd5e1">${displayOwner}</span><br/>
-          ${p.address ? `<span style="color:#64748b;font-size:10px">📍 ${p.address}</span><br/>` : ''}
-          <span style="color:#FFD700;font-weight:700">${sqKm} sq km</span>
-          <span style="color:#94a3b8">(${(p.landAreaSqM || 0).toLocaleString()} m² · ${p.buildingType || 'structure'})</span>
-          ${affected ? '<br/><span style="color:#FFD700;font-weight:700">🏠 AFFECTED STRUCTURE</span>' : ''}
-        </div>`,
-        { sticky: true, opacity: 0.95 }
-      );
-    },
-    [affectedBuildingIds, setSelectedFeature, inspectFeature]
-  );
 
   return (
     <div className="flex-1 relative w-full h-full">
@@ -303,21 +274,11 @@ export default function MapContainer() {
                   <strong style="color:#2563eb">Infrastructure Corridor Alignment</strong>
                   <div style="color:#64748b;margin-top:4px">Width: ${bufferWidthMeters} m</div>
                   <div style="color:#059669;font-weight:600;margin-top:2px">
-                    ${affectedPlots.length} plots · ${affectedBuildings.length} buildings hit
+                    ${affectedPlots.length} cadastral plots intersected
                   </div>
                 </div>`
               );
             }}
-          />
-        )}
-
-        {/* LAYER 4 — Building Footprints (grey unaffected, YELLOW affected) — Top z-index */}
-        {buildingFC.features.length > 0 && (
-          <GeoJSON
-            key={`bldg-${buildingVersion}-${affectedBuildings.length}-${selectedFeature?.kind}-${selectedFeature?.feature?.properties?.plotId}`}
-            data={buildingFC}
-            style={getBuildingStyle}
-            onEachFeature={bindBuildingFeature}
           />
         )}
 
@@ -381,10 +342,8 @@ export default function MapContainer() {
         {legendOpen && (
           <div className="space-y-1.5 mt-2 pt-2 border-t border-slate-100">
             {[
-              { color: '#10b981', label: 'Land Plot (Unaffected)' },
-              { color: '#FF4136', label: 'Land Plot (Affected — Red)' },
-              { color: '#94a3b8', label: 'Building Footprint (Unaffected)' },
-              { color: '#F59E0B', label: 'Building Footprint (Affected — Amber)' },
+              { color: '#10b981', opacity: 0.25, label: 'Land Plot (Unaffected)' },
+              { color: '#EF4444', opacity: 0.65, label: 'Affected Plot (Intersected — Red)' },
               { color: '#3b82f6', opacity: 0.35, label: 'Corridor Buffer' }
             ].map(({ color, opacity = 1, label }) => (
               <div key={label} className="flex items-center gap-2 text-slate-700">

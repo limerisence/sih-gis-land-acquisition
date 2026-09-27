@@ -224,8 +224,11 @@ async function fetchOverpassFeatures(south, west, north, east) {
   // Cap at 500 elements to keep payload small and fast on low-memory instances
   const query = `[out:json][timeout:20];
 (
-  way["building"](${south},${west},${north},${east});
   way["landuse"](${south},${west},${north},${east});
+  way["leisure"](${south},${west},${north},${east});
+  way["boundary"="cadastral"](${south},${west},${north},${east});
+  way["place"](${south},${west},${north},${east});
+  way["amenity"](${south},${west},${north},${east});
   relation["landuse"](${south},${west},${north},${east});
 );
 out geom 500;`;
@@ -345,8 +348,11 @@ app.all('/api/overpass', async (req, res) => {
 
     const query = `[out:json][timeout:20];
 (
-  way["building"](${south},${west},${north},${east});
   way["landuse"](${south},${west},${north},${east});
+  way["leisure"](${south},${west},${north},${east});
+  way["boundary"="cadastral"](${south},${west},${north},${east});
+  way["place"](${south},${west},${north},${east});
+  way["amenity"](${south},${west},${north},${east});
   relation["landuse"](${south},${west},${north},${east});
 );
 out geom 500;`;

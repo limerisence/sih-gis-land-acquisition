@@ -1,46 +1,42 @@
 import React from 'react';
-import { Building2, Home, Trees, Eye, MapPin, ExternalLink, Navigation, Clock } from 'lucide-react';
+import { Home, Trees, Eye, MapPin, ExternalLink, Navigation, Clock, Building2 } from 'lucide-react';
 import * as turf from '@turf/turf';
-import { isLandPlot, useGIS } from '../context/GISContext';
+import { useGIS } from '../context/GISContext';
 
 export default function FeatureItemCard({ feature }) {
   const {
     selectedFeature,
     focusOnFeature,
     inspectFeature,
-    affectedPlotIds,
-    affectedBuildingIds
+    affectedPlotIds
   } = useGIS();
 
   const p = feature.properties || {};
-  const isPlot = isLandPlot(feature);
-  const isAffected = isPlot
-    ? affectedPlotIds.has(p.plotId)
-    : affectedBuildingIds.has(p.plotId);
+  const isAffected = affectedPlotIds.has(p.plotId);
   const isSelected = selectedFeature?.feature?.properties?.plotId === p.plotId;
 
-  // Area in sq km and sq meters
-  const areaSqM = p.landAreaSqM || 0;
-  const areaSqKm = p.landAreaSqKm !== undefined
-    ? Number(p.landAreaSqKm).toFixed(6)
-    : (areaSqM / 1_000_000).toFixed(6);
-
-  // Derive coordinates (centroid)
+  // Real-time centroid coordinates via turf.centroid
   let lat = p.coordinates?.lat;
   let lng = p.coordinates?.lng;
-  if (!lat || !lng) {
-    try {
-      const c = turf.centroid(feature);
+  try {
+    const c = turf.centroid(feature);
+    if (c?.geometry?.coordinates) {
       lng = Number(c.geometry.coordinates[0].toFixed(5));
       lat = Number(c.geometry.coordinates[1].toFixed(5));
-    } catch (_) {
-      lat = 22.5726;
-      lng = 88.3639;
     }
+  } catch (_) {
+    lat = lat || 22.5726;
+    lng = lng || 88.3639;
   }
 
+  // Intersected area vs total parcel area
+  const intersectedSqM = p.intersectedAreaSqM || p.landAreaSqM || 0;
+  const intersectedAcres = p.intersectedAcres || Number((intersectedSqM / 4046.856).toFixed(3));
+  const totalSqM = p.landAreaSqM || intersectedSqM;
+  const totalSqKm = ((totalSqM) / 1_000_000).toFixed(4);
+
   // Address
-  const address = p.address || p.name || `Location: ${lat}° N, ${lng}° E, West Bengal`;
+  const address = p.address || p.name || `Cadastral Plot at ${lat}° N, ${lng}° E, West Bengal`;
 
   const CategoryIcon = ({ cat }) => {
     if (cat === 'Commercial') return <Building2 className="w-3 h-3 shrink-0" />;
@@ -58,7 +54,7 @@ export default function FeatureItemCard({ feature }) {
 
   return (
     <div
-      onClick={() => focusOnFeature(feature, isPlot ? 'plot' : 'building', 17)}
+      onClick={() => focusOnFeature(feature, 'plot', 17)}
       className={`p-3.5 rounded-xl cursor-pointer transition-all border group relative ${
         isSelected
           ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-100 shadow-sm'
@@ -67,23 +63,23 @@ export default function FeatureItemCard({ feature }) {
           : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
       }`}
     >
-      {/* Top row: Plot ID, Khasra, Category, HIT */}
+      {/* Top row: Plot ID, Khasra/Dag No, Category, HIT */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap mb-1">
             <span className={`font-bold text-xs font-mono ${isAffected ? 'text-rose-600' : 'text-slate-900'}`}>
               {p.plotId}
             </span>
-            <span className="text-[11px] text-slate-500 font-mono">
-              {p.khasraNo ? `Khasra ${p.khasraNo}` : 'Record Pending'}
+            <span className="text-[11px] text-slate-600 font-mono font-semibold">
+              / {p.khasraNo || 'Dag Pending'}
             </span>
             <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold border flex items-center gap-1 ${getBadgeStyle(p.landCategory)}`}>
               <CategoryIcon cat={p.landCategory} />
               {p.landCategory || 'Pending Survey'}
             </span>
-            {!isPlot && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold bg-amber-50 text-amber-800 border border-amber-200/60">
-                Bldg
+            {p.isSyntheticCadastre && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                Cadastral Grid
               </span>
             )}
           </div>
@@ -103,7 +99,7 @@ export default function FeatureItemCard({ feature }) {
             title="Inspect Details"
             onClick={(e) => {
               e.stopPropagation();
-              inspectFeature(feature, isPlot ? 'plot' : 'building');
+              inspectFeature(feature, 'plot');
             }}
             className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
@@ -112,17 +108,17 @@ export default function FeatureItemCard({ feature }) {
         </div>
       </div>
 
-      {/* Address Row for Surveyor Field Visit */}
+      {/* Address Row with real reverse geocoded street/zone info */}
       <div className="mt-2.5 p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-1.5">
         <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-        <span className="leading-snug text-slate-600">{address}</span>
+        <span className="leading-snug text-slate-600 line-clamp-2">{address}</span>
       </div>
 
-      {/* GPS Coordinates & Field Nav */}
+      {/* Real-time Centroid Coordinates & Survey Map link */}
       <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-slate-500 px-0.5">
         <span className="flex items-center gap-1">
           <Navigation className="w-3 h-3 text-slate-400" />
-          {lat?.toFixed(5)}, {lng?.toFixed(5)}
+          {lat}° N, {lng}° E
         </span>
         <a
           href={`https://www.google.com/maps?q=${lat},${lng}`}
@@ -135,15 +131,25 @@ export default function FeatureItemCard({ feature }) {
         </a>
       </div>
 
-      {/* Area in sq km & sq meters */}
+      {/* Intersected Area in Sq Meters & Acres */}
       <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-        <span className="text-slate-500 font-medium">Plot Footprint:</span>
-        <div className="text-right">
-          <span className="font-bold text-slate-900 font-mono">
-            {areaSqKm} sq km
+        <div>
+          <span className="text-[10px] uppercase font-bold text-rose-600 block">
+            Intersected Area
           </span>
-          <span className="text-[11px] text-slate-500 ml-1">
-            ({areaSqM.toLocaleString()} m²)
+          <span className="font-bold text-slate-900 font-mono">
+            {intersectedSqM.toLocaleString()} m²
+          </span>
+          <span className="text-[11px] text-slate-500 font-medium ml-1">
+            ({intersectedAcres} Ac)
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] uppercase font-semibold text-slate-400 block">
+            Total Parcel
+          </span>
+          <span className="text-xs text-slate-600 font-mono">
+            {totalSqKm} sq km
           </span>
         </div>
       </div>
