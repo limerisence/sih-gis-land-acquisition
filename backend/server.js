@@ -331,6 +331,67 @@ app.get('/api/plots', (req, res) => {
   }
 });
 
+// Overpass Proxy API: GET & POST /api/overpass
+app.all('/api/overpass', async (req, res) => {
+  try {
+    const south = req.query.south || req.body?.south;
+    const west  = req.query.west  || req.body?.west;
+    const north = req.query.north || req.body?.north;
+    const east  = req.query.east  || req.body?.east;
+
+    if (!south || !west || !north || !east) {
+      return res.status(400).json({ error: 'Missing bbox: south, west, north, east.' });
+    }
+
+    const query = `[out:json][timeout:20];
+(
+  way["building"](${south},${west},${north},${east});
+  way["landuse"](${south},${west},${north},${east});
+  relation["landuse"](${south},${west},${north},${east});
+);
+out geom 500;`;
+
+    const mirrors = [
+      'https://overpass-api.de/api/interpreter',
+      'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+      'https://z.overpass-api.de/api/interpreter',
+      'https://lz4.overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://overpass.private.coffee/api/interpreter'
+    ];
+
+    for (const mirror of mirrors) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+        const response = await fetch(mirror, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'BhoomiSetuGIS/2.0 (Municipal Land Acquisition Platform; mailto:admin@bhoomi-setu.gov.in)'
+          },
+          body: 'data=' + encodeURIComponent(query),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        if (data && Array.isArray(data.elements) && data.elements.length > 0) {
+          return res.status(200).json(data);
+        }
+      } catch (err) {}
+    }
+
+    return res.status(503).json({ error: 'All Overpass mirrors timed out' });
+  } catch (error) {
+    console.error('Error in /api/overpass:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // 3. SPATIAL INTERSECTION API ENDPOINT (WITH MULTI-POINT CORRIDOR & DYNAMIC OVERPASS FETCH)
 app.post('/api/land/intersect', async (req, res) => {
   try {

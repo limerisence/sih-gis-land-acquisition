@@ -2,15 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import * as turf from '@turf/turf';
 import osmtogeojson from 'osmtogeojson';
 
-// ─── Overpass mirrors — browser IPs are never blocked by Overpass ────────────
-const OVERPASS_MIRRORS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://z.overpass-api.de/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-  'https://lz4.overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
-
 // ─── OSM enrichment helpers (ported from backend) ───────────────────────────
 function hashString(str) {
   let hash = 0;
@@ -167,10 +158,19 @@ function enrichAddressesProgressively(plots, onPlotUpdated) {
 }
 
 // ─── Bbox-keyed result cache — prevents re-querying Overpass for the same area ─
+const OVERPASS_MIRRORS = [
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
+
 const overpassCache = new Map();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// ─── Client-side Overpass fetch with caching, 429 detection, multi-mirror failover ─
+// ─── Overpass fetch: First uses /api/overpass serverless proxy, then direct mirrors ─
 async function fetchOverpassPolygons(south, west, north, east) {
   // Round bbox to ~110m grid to maximise cache hits for nearby corridors
   const cacheKey = [south, west, north, east].map((v) => Number(v).toFixed(3)).join(',');
@@ -180,7 +180,36 @@ async function fetchOverpassPolygons(south, west, north, east) {
     return cached.data;
   }
 
-  // Fast, lean query matching the smooth Express configuration capped at 500
+  // 1. Primary: Same-Origin Serverless Proxy (/api/overpass)
+  // Runs in Node.js on Vercel or Express backend locally, using genuine User-Agent to bypass browser 406/CORS restrictions
+  try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 12000);
+    const proxyRes = await fetch(`/api/overpass?south=${south}&west=${west}&north=${north}&east=${east}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(tid);
+
+    if (proxyRes.ok) {
+      const osmJson = await proxyRes.json();
+      if (osmJson && Array.isArray(osmJson.elements) && osmJson.elements.length > 0) {
+        const geojson = osmtogeojson(osmJson);
+        const polygons = (geojson.features || []).filter(
+          (f) => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')
+        );
+        if (polygons.length > 0) {
+          console.log(`[Overpass Proxy] Successfully received ${polygons.length} features from /api/overpass`);
+          overpassCache.set(cacheKey, { data: polygons, ts: Date.now() });
+          return polygons;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Overpass Proxy] /api/overpass unavailable, falling back to direct mirrors:', err.message);
+  }
+
+  // 2. Secondary: Direct browser failover to public Overpass mirrors
   const query = `[out:json][timeout:20];
 (
   way["building"](${south},${west},${north},${east});
@@ -194,7 +223,7 @@ out geom 500;`;
   for (const url of OVERPASS_MIRRORS) {
     try {
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 12000);
+      const tid = setTimeout(() => controller.abort(), 10000);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -233,11 +262,11 @@ out geom 500;`;
     }
   }
 
-  // GET fallback if browser POST was blocked by security headers
+  // 3. Tertiary GET fallback
   try {
-    const getUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+    const getUrl = `https://maps.mail.ru/osm/tools/overpass/api/interpreter?data=${encodeURIComponent(query)}`;
     const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 12000);
+    const tid = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(getUrl, { signal: controller.signal });
     clearTimeout(tid);
     if (res.ok) {
