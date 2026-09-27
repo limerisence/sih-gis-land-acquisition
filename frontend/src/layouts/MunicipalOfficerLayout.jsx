@@ -734,8 +734,8 @@ function GISBranch({ onBack, userProfile }) {
         <FeatureDetailModal />
 
         {/* Project name + base rates + send bar */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col gap-2.5 p-4 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-xl min-w-[700px]">
-          <div className="flex items-center gap-3">
+        <div className="absolute bottom-4 left-4 sm:left-[416px] z-30 flex flex-col gap-2 p-3 sm:p-3.5 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-lg max-w-[calc(100vw-32px)] sm:max-w-[calc(100vw-440px)]">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             <div className="flex flex-col gap-0.5 shrink-0">
               <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Project Name *</label>
               <input
@@ -743,21 +743,21 @@ function GISBranch({ onBack, userProfile }) {
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g. NH-34 Widening Phase 1"
-                className="w-56 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-all"
+                className="w-44 sm:w-52 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 transition-all"
               />
             </div>
 
-            <div className="w-px h-10 bg-slate-200" />
+            <div className="hidden sm:block w-px h-8 bg-slate-200" />
 
             {/* Base Circle Rates Inputs */}
-            <div className="flex items-center gap-2 flex-1">
+            <div className="flex items-center gap-2">
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 block mb-0.5">Res. Rate (₹/m²)</label>
                 <input
                   type="number"
                   value={baseRates.Residential}
                   onChange={(e) => setBaseRates({ ...baseRates, Residential: e.target.value })}
-                  className="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
+                  className="w-20 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
                 />
               </div>
               <div>
@@ -766,7 +766,7 @@ function GISBranch({ onBack, userProfile }) {
                   type="number"
                   value={baseRates.Commercial}
                   onChange={(e) => setBaseRates({ ...baseRates, Commercial: e.target.value })}
-                  className="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
+                  className="w-20 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
                 />
               </div>
               <div>
@@ -775,7 +775,7 @@ function GISBranch({ onBack, userProfile }) {
                   type="number"
                   value={baseRates.Agricultural}
                   onChange={(e) => setBaseRates({ ...baseRates, Agricultural: e.target.value })}
-                  className="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
+                  className="w-20 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:border-blue-600"
                 />
               </div>
             </div>
@@ -784,7 +784,7 @@ function GISBranch({ onBack, userProfile }) {
               type="button"
               onClick={handleSendAll}
               disabled={!canSend}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0"
             >
               <Send className="w-3.5 h-3.5" />
               Send for Surveying

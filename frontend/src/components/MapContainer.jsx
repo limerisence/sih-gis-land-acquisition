@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import {
   MapContainer as LeafletMap,
   TileLayer,
@@ -12,7 +12,7 @@ import {
 } from 'react-leaflet';
 import * as turf from '@turf/turf';
 import L from 'leaflet';
-import { Layers } from 'lucide-react';
+import { Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGIS } from '../context/GISContext';
 import { useAuth, ROLES } from '../context/AuthContext';
 
@@ -121,6 +121,7 @@ function MapCameraController({ resetTrigger }) {
 export default function MapContainer() {
   const { userRole } = useAuth();
   const clickEnabled = userRole !== ROLES.BENEFICIARY;
+  const [legendOpen, setLegendOpen] = useState(true);
   const {
     points,
     addPoint,
@@ -361,32 +362,46 @@ export default function MapContainer() {
       </LeafletMap>
 
       {/* Layer Legend (bottom-right) */}
-      <div className="absolute bottom-8 right-6 z-20 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-sm p-3.5 shadow-md text-xs text-slate-800">
-        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-          <Layers className="w-3.5 h-3.5 text-blue-600" /> Layer Legend
-        </div>
-        <div className="space-y-1.5">
-          {[
-            { color: '#10b981', label: 'Land Plot (Unaffected)' },
-            { color: '#FF4136', label: 'Land Plot (Affected — Red)' },
-            { color: '#94a3b8', label: 'Building Footprint (Unaffected)' },
-            { color: '#F59E0B', label: 'Building Footprint (Affected — Amber)' },
-            { color: '#3b82f6', opacity: 0.35, label: 'Corridor Buffer' }
-          ].map(({ color, opacity = 1, label }) => (
-            <div key={label} className="flex items-center gap-2 text-slate-700">
-              <span className="w-3.5 h-3 rounded-xs shrink-0" style={{ background: color, opacity }} />
-              <span>{label}</span>
+      <div className="absolute bottom-4 right-4 z-20 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-sm p-3 shadow-md text-xs text-slate-800 transition-all max-w-[220px]">
+        <button
+          type="button"
+          onClick={() => setLegendOpen((prev) => !prev)}
+          className="text-[10px] uppercase font-bold tracking-wider text-slate-500 hover:text-slate-800 flex items-center justify-between w-full cursor-pointer transition-colors"
+          title={legendOpen ? "Collapse Legend" : "Expand Legend"}
+        >
+          <span className="flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-blue-600" /> Layer Legend
+          </span>
+          {legendOpen ? (
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+          ) : (
+            <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+          )}
+        </button>
+        {legendOpen && (
+          <div className="space-y-1.5 mt-2 pt-2 border-t border-slate-100">
+            {[
+              { color: '#10b981', label: 'Land Plot (Unaffected)' },
+              { color: '#FF4136', label: 'Land Plot (Affected — Red)' },
+              { color: '#94a3b8', label: 'Building Footprint (Unaffected)' },
+              { color: '#F59E0B', label: 'Building Footprint (Affected — Amber)' },
+              { color: '#3b82f6', opacity: 0.35, label: 'Corridor Buffer' }
+            ].map(({ color, opacity = 1, label }) => (
+              <div key={label} className="flex items-center gap-2 text-slate-700">
+                <span className="w-3.5 h-3 rounded-xs shrink-0" style={{ background: color, opacity }} />
+                <span className="truncate">{label}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" /> P1 Start
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" /> Pn Vertices
+              </span>
             </div>
-          ))}
-          <div className="flex items-center gap-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" /> P1 Start
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" /> Pn Vertices
-            </span>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
