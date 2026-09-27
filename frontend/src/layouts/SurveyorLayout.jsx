@@ -608,23 +608,27 @@ function ReviewInspection({ project, onBack }) {
 
   const handleResubmit = useCallback(async () => {
     setSubmitting(true);
-    const allT = loadTasks();
+    const allT = allTasks.length > 0 ? allTasks : loadTasks();
     const updated = allT.map((t) => {
       if (t.projectId !== project.project_id || (t.officerStatus !== 'Under Review' && !t.reviewRemarks)) return t;
       const fd = formData[t.id] || {};
       const isR = fd.zoneType === 'RURAL' || Boolean(fd.isRural);
+      const vClass = fd.verifiedLandClass || t.verifiedLandClass || (t.landCategory !== 'Pending Survey' ? t.landCategory : 'Residential');
       return {
         ...t, ...fd,
         khasraNo: fd.khasraNo !== undefined ? fd.khasraNo.trim() : (t.khasraNo || ''),
         zoneType: isR ? 'RURAL' : 'URBAN',
         isRural: isR,
-        landCategory: fd.verifiedLandClass || t.verifiedLandClass || t.landCategory,
+        verifiedLandClass: vClass,
+        landCategory: vClass,
         officerStatus: null,
         reviewRemarks: null,
         resubmittedAt: new Date().toISOString(),
         status: 'Completed',
       };
     });
+    setAllTasks(updated);
+    saveTasks(updated);
     await dataService.saveTasks(updated);
 
     const allP = loadProjects();
@@ -775,6 +779,37 @@ function PlotInspection({ project, onBack }) {
     return init;
   });
 
+  React.useEffect(() => {
+    if (projTasks.length > 0) {
+      setFormData((prev) => {
+        const next = { ...prev };
+        let hasChanges = false;
+        projTasks.forEach((t) => {
+          if (!next[t.id]) {
+            hasChanges = true;
+            next[t.id] = {
+              surveyorOwnerName:    t.surveyorOwnerName    || '',
+              surveyorPhone:        t.surveyorPhone        || '',
+              surveyorAadhaar:      t.surveyorAadhaar      || '',
+              surveyorOwnerContact: t.surveyorOwnerContact || '',
+              khasraNo:             t.khasraNo             || '',
+              verifiedLandClass:    (t.verifiedLandClass && t.verifiedLandClass !== 'Pending Survey') ? t.verifiedLandClass : (t.landCategory && t.landCategory !== 'Pending Survey' ? t.landCategory : 'Residential'),
+              zoneType:             t.zoneType             || (t.isRural ? 'RURAL' : 'URBAN'),
+              isRural:              t.zoneType === 'RURAL' || Boolean(t.isRural),
+              areaSqm:              t.areaSqm              ?? '',
+              assetValue:           t.assetValue           ?? '',
+              soilReportUrl:        t.soilReportUrl        || null,
+              soilReportName:       t.soilReportName       || null,
+              sitePhotoUrl:         t.sitePhotoUrl         || null,
+              sitePhotoName:        t.sitePhotoName        || null,
+            };
+          }
+        });
+        return hasChanges ? next : prev;
+      });
+    }
+  }, [projTasks]);
+
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(project.status === 'CLOSED' || project.status === 'COMPLETED');
 
@@ -784,21 +819,25 @@ function PlotInspection({ project, onBack }) {
 
   const handleFinalSubmit = useCallback(async () => {
     setSubmitting(true);
-    const allT = loadTasks();
+    const allT = allTasks.length > 0 ? allTasks : loadTasks();
     const updated = allT.map((t) => {
       if (t.projectId !== project.project_id) return t;
       const fd = formData[t.id] || {};
       const isR = fd.zoneType === 'RURAL' || Boolean(fd.isRural);
+      const vClass = fd.verifiedLandClass || t.verifiedLandClass || (t.landCategory !== 'Pending Survey' ? t.landCategory : 'Residential');
       return {
         ...t,
         ...fd,
         khasraNo: fd.khasraNo !== undefined ? fd.khasraNo.trim() : (t.khasraNo || ''),
         zoneType: isR ? 'RURAL' : 'URBAN',
         isRural: isR,
-        landCategory: fd.verifiedLandClass || t.verifiedLandClass || t.landCategory,
+        verifiedLandClass: vClass,
+        landCategory: vClass,
         status: 'Completed',
       };
     });
+    setAllTasks(updated);
+    saveTasks(updated);
     await dataService.saveTasks(updated);
 
     const allP = loadProjects();

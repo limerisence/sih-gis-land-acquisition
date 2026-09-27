@@ -52,11 +52,21 @@ export default function FeatureItemCard({ feature }) {
     return 'bg-amber-50 text-amber-700 border-amber-200/60';
   };
 
+  // Check if plot is officially approved
+  let isApproved = p.status === 'Approved' || p.officerStatus === 'Approved';
+  try {
+    const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
+    const task = tasks.find((t) => t.plotId === p.plotId || t.id === p.plotId);
+    if (task?.officerStatus === 'Approved' || task?.status === 'Approved') isApproved = true;
+  } catch (_) {}
+
   return (
     <div
       onClick={() => focusOnFeature(feature, 'plot', 17)}
       className={`p-3.5 rounded-xl cursor-pointer transition-all border group relative ${
-        isSelected
+        isApproved
+          ? 'border-2 border-red-500 bg-red-50/25 ring-2 ring-red-100 shadow-sm'
+          : isSelected
           ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-100 shadow-sm'
           : isAffected
           ? 'border-rose-200/80 bg-rose-50/20 hover:border-rose-300 hover:shadow-xs'
@@ -67,7 +77,7 @@ export default function FeatureItemCard({ feature }) {
       <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap mb-1">
-            <span className={`font-bold text-xs font-mono ${isAffected ? 'text-rose-600' : 'text-slate-900'}`}>
+            <span className={`font-bold text-xs font-mono ${isApproved ? 'text-red-700' : isAffected ? 'text-rose-600' : 'text-slate-900'}`}>
               {p.plotId}
             </span>
             <span className="text-[11px] text-slate-600 font-mono font-semibold">
@@ -77,6 +87,11 @@ export default function FeatureItemCard({ feature }) {
               <CategoryIcon cat={p.landCategory} />
               {p.landCategory || 'Pending Survey'}
             </span>
+            {isApproved && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-red-100 text-red-700 border border-red-300">
+                APPROVED
+              </span>
+            )}
             {p.isSyntheticCadastre && (
               <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                 Cadastral Grid

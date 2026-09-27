@@ -213,7 +213,30 @@ export const dataService = {
           const local = loadRaw(LS_TASKS_KEY, []);
           const mergedMap = new Map();
           local.forEach((t) => mergedMap.set(t.id, t));
-          mapped.forEach((t) => mergedMap.set(t.id, t));
+          mapped.forEach((t) => {
+            const existing = mergedMap.get(t.id) || {};
+            mergedMap.set(t.id, {
+              ...existing,
+              ...t,
+              surveyorOwnerName: t.surveyorOwnerName || existing.surveyorOwnerName || '',
+              surveyorPhone: t.surveyorPhone || existing.surveyorPhone || '',
+              surveyorAadhaar: t.surveyorAadhaar || existing.surveyorAadhaar || '',
+              surveyorOwnerContact: t.surveyorOwnerContact || existing.surveyorOwnerContact || '',
+              verifiedLandClass: (t.verifiedLandClass && t.verifiedLandClass !== 'Pending Survey') ? t.verifiedLandClass : (existing.verifiedLandClass || t.verifiedLandClass || 'Residential'),
+              soilReportUrl: t.soilReportUrl || existing.soilReportUrl || null,
+              soilReportName: t.soilReportName || existing.soilReportName || null,
+              sitePhotoUrl: t.sitePhotoUrl || existing.sitePhotoUrl || null,
+              sitePhotoName: t.sitePhotoName || existing.sitePhotoName || null,
+              assetValue: t.assetValue !== null && t.assetValue !== undefined ? t.assetValue : (existing.assetValue ?? null),
+              areaSqm: t.areaSqm !== null && t.areaSqm !== undefined ? t.areaSqm : (existing.areaSqm ?? null),
+              larr_financials: t.larr_financials || existing.larr_financials || null,
+              baseCircleRateOverride: t.baseCircleRateOverride ?? existing.baseCircleRateOverride,
+              zoneTypeOverride: t.zoneTypeOverride || existing.zoneTypeOverride,
+              officerStatus: t.officerStatus || existing.officerStatus,
+              officerRemarks: t.officerRemarks || existing.officerRemarks || '',
+              status: t.status || existing.status || 'Pending',
+            });
+          });
           const merged = Array.from(mergedMap.values()).sort((a, b) => new Date(b.dispatchedAt || 0) - new Date(a.dispatchedAt || 0));
           saveRaw(LS_TASKS_KEY, merged);
           return merged;
@@ -244,12 +267,38 @@ export const dataService = {
 
     if (isSupabaseConfigured) {
       try {
-        const target = updated.find((t) => t.id === taskId);
-        if (target) {
-          await supabase.from('survey_tasks').upsert([taskToDb(target)]);
+        const dbUpdates = {};
+        if (updates.officerStatus !== undefined) dbUpdates.officer_status = updates.officerStatus;
+        if (updates.officerRemarks !== undefined) dbUpdates.officer_remarks = updates.officerRemarks;
+        if (updates.reviewRemarks !== undefined) dbUpdates.review_remarks = updates.reviewRemarks;
+        if (updates.status !== undefined) dbUpdates.status = updates.status;
+        if (updates.baseCircleRateOverride !== undefined) dbUpdates.base_circle_rate_override = updates.baseCircleRateOverride;
+        if (updates.zoneTypeOverride !== undefined) dbUpdates.zone_type_override = updates.zoneTypeOverride;
+        if (updates.zoneType !== undefined) dbUpdates.zone_type = updates.zoneType;
+        if (updates.isRural !== undefined) dbUpdates.is_rural = updates.isRural;
+        if (updates.larr_financials !== undefined) dbUpdates.larr_financials = updates.larr_financials;
+        if (updates.surveyorOwnerName !== undefined) dbUpdates.surveyor_owner_name = updates.surveyorOwnerName;
+        if (updates.surveyorPhone !== undefined) dbUpdates.surveyor_phone = updates.surveyorPhone;
+        if (updates.surveyorAadhaar !== undefined) dbUpdates.surveyor_aadhaar = updates.surveyorAadhaar;
+        if (updates.surveyorOwnerContact !== undefined) dbUpdates.surveyor_owner_contact = updates.surveyorOwnerContact;
+        if (updates.verifiedLandClass !== undefined) dbUpdates.verified_land_class = updates.verifiedLandClass;
+        if (updates.areaSqm !== undefined) dbUpdates.area_sqm = (updates.areaSqm !== '' && updates.areaSqm !== null) ? Number(updates.areaSqm) : null;
+        if (updates.assetValue !== undefined) dbUpdates.asset_value = (updates.assetValue !== '' && updates.assetValue !== null) ? Number(updates.assetValue) : null;
+        if (updates.soilReportUrl !== undefined) dbUpdates.soil_report_url = updates.soilReportUrl;
+        if (updates.soilReportName !== undefined) dbUpdates.soil_report_name = updates.soilReportName;
+        if (updates.sitePhotoUrl !== undefined) dbUpdates.site_photo_url = updates.sitePhotoUrl;
+        if (updates.sitePhotoName !== undefined) dbUpdates.site_photo_name = updates.sitePhotoName;
+        if (updates.khasraNo !== undefined) dbUpdates.khasra_no = updates.khasraNo;
+        if (updates.resubmittedAt !== undefined) dbUpdates.resubmitted_at = updates.resubmittedAt;
+
+        if (Object.keys(dbUpdates).length > 0) {
+          const { error } = await supabase.from('survey_tasks').update(dbUpdates).eq('id', taskId);
+          if (error) {
+            console.warn('[DataService] Supabase updateTask error:', error);
+          }
         }
       } catch (e) {
-        console.warn('[DataService] Supabase updateTask error:', e);
+        console.warn('[DataService] Supabase updateTask exception:', e);
       }
     }
     return updated;

@@ -12,7 +12,7 @@ import FeatureDetailModal from '../components/FeatureDetailModal';
 import { useGIS } from '../context/GISContext';
 import { useAuth } from '../context/AuthContext';
 import { calculatePlotCompensation } from '../utils/larrCalculator';
-import { exportPDF } from '../utils/pdfExporter';
+import { exportPDF, exportSinglePlotPDF } from '../utils/pdfExporter';
 import * as turf from '@turf/turf';
 import { dataService } from '../services/dataService';
 
@@ -907,21 +907,36 @@ function ReportsBranch({ onBack, userProfile }) {
 
     const financials = calculatePlotCompensation(areaSqm, rate, assetVal, isRural);
 
-    const allT = loadTasks();
-    const updated = allT.map((t) => {
-      if (t.id !== task.id) return t;
-      return {
-        ...t,
-        baseCircleRateOverride: rate,
-        zoneTypeOverride: currentZone,
-        zoneType: currentZone,
-        isRural: isRural,
-        larr_financials: financials,
-      };
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id !== task.id) return t;
+        return {
+          ...t,
+          baseCircleRateOverride: rate,
+          zoneTypeOverride: currentZone,
+          zoneType: currentZone,
+          isRural: isRural,
+          larr_financials: financials,
+        };
+      });
+      saveTasks(updated);
+      return updated;
     });
-    saveTasks(updated);
-    setTasks(updated);
-    showToast(`🧮 LARR Compensation Calculated for Plot ${task.plotId}: ₹${financials.totalAward.toLocaleString('en-IN')} (${financials.multiplier}× Multiplier)`, 'success');
+
+    // Explicitly update Supabase survey_tasks record & disbursements table
+    dataService.updateTask(task.id, {
+      baseCircleRateOverride: rate,
+      zoneTypeOverride: currentZone,
+      zoneType: currentZone,
+      isRural: isRural,
+      larr_financials: financials,
+    });
+    dataService.upsertDisbursement(task.id, {
+      awardAmount: financials.totalAward,
+      beneficiaryName: task.surveyorOwnerName || task.ownerName || 'Verified Citizen',
+    });
+
+    showToast(`🧮 LARR Compensation for Plot ${task.plotId} saved to database: ₹${financials.totalAward.toLocaleString('en-IN')}`, 'success');
   }, [circleRates, zoneOverrides, showToast]);
 
   const handleOfficerRemarkChange = useCallback((taskId, val) => {
@@ -947,18 +962,22 @@ function ReportsBranch({ onBack, userProfile }) {
   const handleOfficerAction = useCallback((taskId, newOfficerStatus) => {
     const currentRevRem = reviewRemarkDrafts[taskId] !== undefined ? reviewRemarkDrafts[taskId] : (tasks.find((t) => t.id === taskId)?.reviewRemarks || '');
     const currentOffRem = officerRemarkDrafts[taskId] !== undefined ? officerRemarkDrafts[taskId] : (tasks.find((t) => t.id === taskId)?.officerRemarks || '');
+    const nextPrimaryStatus = newOfficerStatus === 'Approved' ? 'Approved' : (newOfficerStatus === 'Under Review' ? 'Under Review' : (newOfficerStatus === 'Rejected' ? 'Rejected' : undefined));
 
-    setTasks((prev) =>
-      prev.map((t) => {
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
         if (t.id !== taskId) return t;
         return {
           ...t,
           officerStatus: newOfficerStatus,
+          status: nextPrimaryStatus || t.status,
           officerRemarks: currentOffRem,
           reviewRemarks: newOfficerStatus === 'Under Review' ? (currentRevRem || 'Please verify plot boundary and re-upload required documents.') : t.reviewRemarks,
         };
-      })
-    );
+      });
+      saveTasks(updated);
+      return updated;
+    });
 
     const labels = { Approved: '✅ Approved', 'Under Review': '🔄 Sent for Review', Rejected: '❌ Rejected' };
     showToast(`Plot ${taskId.slice(-6)} — ${labels[newOfficerStatus]}`, newOfficerStatus === 'Approved' ? 'success' : 'info');
@@ -966,6 +985,7 @@ function ReportsBranch({ onBack, userProfile }) {
     (async () => {
       await dataService.updateTask(taskId, {
         officerStatus: newOfficerStatus,
+        status: nextPrimaryStatus,
         officerRemarks: currentOffRem,
         reviewRemarks: newOfficerStatus === 'Under Review' ? (currentRevRem || 'Please verify plot boundary and re-upload required documents.') : undefined,
       });
@@ -1113,11 +1133,16 @@ function ReportsBranch({ onBack, userProfile }) {
             {projTasks.map((task) => {
               const os = task.officerStatus;
               const osMeta = OFFICER_STATUS_STYLE[os];
+              const isApproved = os === 'Approved' || task.status === 'Approved';
 
               return (
                 <div
                   key={task.id}
-                  className="p-5 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all"
+                  className={`p-5 rounded-xl bg-white shadow-sm hover:shadow-md transition-all ${
+                    isApproved
+                      ? 'border-2 border-red-500 ring-2 ring-red-100 shadow-md shadow-red-50'
+                      : 'border border-slate-200'
+                  }`}
                 >
                   {/* Plot header row */}
                   <div className="flex items-start justify-between gap-4 mb-3">
@@ -1133,7 +1158,9 @@ function ReportsBranch({ onBack, userProfile }) {
                       {/* Survey status */}
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          task.status === 'Completed'
+                          task.status === 'Approved'
+                            ? 'bg-red-50 text-red-700 border border-red-300 font-bold'
+                            : task.status === 'Completed'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                             : 'bg-amber-50 text-amber-700 border border-amber-200/60'
                         }`}
@@ -1145,6 +1172,12 @@ function ReportsBranch({ onBack, userProfile }) {
                       {os && (
                         <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${osMeta.className}`}>
                           {osMeta.icon} {osMeta.label}
+                        </span>
+                      )}
+
+                      {isApproved && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300 flex items-center gap-1">
+                          🔴 Approved Plot
                         </span>
                       )}
                     </div>
@@ -1386,7 +1419,14 @@ function ReportsBranch({ onBack, userProfile }) {
                         <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                           Official Award Remarks <span className="text-slate-400 font-normal lowercase">(printed on RFCTLARR PDF report)</span>
                         </label>
-                        <span className="text-[10px] text-slate-400 font-mono">PDF Export</span>
+                        <button
+                          type="button"
+                          onClick={() => exportSinglePlotPDF(task, project)}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 transition-all cursor-pointer shadow-sm"
+                          title="Export official RFCTLARR Sanctioned Award Certificate for this plot"
+                        >
+                          <Download className="w-3 h-3" /> PDF Export
+                        </button>
                       </div>
                       <textarea
                         rows={2}
@@ -1453,7 +1493,11 @@ function TransactionsBranch({ onBack, userProfile }) {
   const RATE = 1800;
 
   const getInfo = (task) => {
-    const d = disburse[task.id] || { status: 'Processing', awardAmount: Math.round((task.areaSqM || 500) * RATE) };
+    const fin = task.larr_financials || {};
+    const d = disburse[task.id] || {
+      status: 'Processing',
+      awardAmount: fin.totalAward ? Number(fin.totalAward) : Math.round((task.areaSqM || 500) * RATE)
+    };
     return d;
   };
 

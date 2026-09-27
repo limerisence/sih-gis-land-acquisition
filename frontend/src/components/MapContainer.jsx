@@ -158,10 +158,25 @@ export default function MapContainer() {
     (feature) => {
       const pid = feature.properties?.plotId;
       if (selectedFeature?.feature?.properties?.plotId === pid) return STYLE.landPlot.selected;
+
+      // Check if plot is officially approved
+      try {
+        const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
+        const task = tasks.find((t) => t.plotId === pid || t.id === pid);
+        if (task?.officerStatus === 'Approved' || task?.status === 'Approved' || feature.properties?.status === 'Approved' || feature.properties?.officerStatus === 'Approved') {
+          return {
+            fillColor: '#EF4444',
+            fillOpacity: 0.45,
+            color: '#DC2626', // Bold Red Border for approved plots
+            weight: 3.5,
+          };
+        }
+      } catch (_) {}
+
       if (affectedPlotIds.has(pid)) return STYLE.landPlot.affected;
       return STYLE.landPlot.unaffected;
     },
-    [affectedPlotIds, selectedFeature]
+    [affectedPlotIds, selectedFeature, landVersion]
   );
 
 
@@ -178,18 +193,23 @@ export default function MapContainer() {
 
       // Resolve surveyor-verified owner name from localStorage if available
       let displayOwner = p.ownerName || '';
+      let isPlotApproved = false;
       try {
         const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
-        const task = tasks.find((t) => t.plotId === p.plotId);
+        const task = tasks.find((t) => t.plotId === p.plotId || t.id === p.plotId);
         if (task?.surveyorOwnerName) {
           displayOwner = `${task.surveyorOwnerName} (Verified)`;
+        }
+        if (task?.officerStatus === 'Approved' || task?.status === 'Approved' || p.status === 'Approved') {
+          isPlotApproved = true;
         }
       } catch (_) {}
 
       layer.bindTooltip(
         `<div style="font-size:11px;line-height:1.5;font-family:sans-serif;padding:3px 5px;max-width:240px;">
-          <strong style="color:${affected ? '#EF4444' : '#10b981'}">${p.plotId}</strong>
-          &nbsp;<span style="color:#64748b">${p.khasraNo || ''}</span><br/>
+          <strong style="color:${isPlotApproved ? '#DC2626' : (affected ? '#EF4444' : '#10b981')}">${p.plotId}</strong>
+          &nbsp;<span style="color:#64748b">${p.khasraNo || ''}</span>
+          ${isPlotApproved ? '&nbsp;<span style="background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:10px;font-weight:700;font-size:9px;border:1px solid #DC2626;">APPROVED</span>' : ''}<br/>
           <span style="color:#334155">${displayOwner}</span><br/>
           ${p.address ? `<span style="color:#64748b;font-size:10px">📍 ${p.address}</span><br/>` : ''}
           <span style="color:#2563eb;font-weight:700">${sqKm} sq km</span>
