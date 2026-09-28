@@ -139,49 +139,18 @@ export const dataService = {
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-        if (!error && data) {
-          const mapped = data.map(projectFromDb);
-          const dbIds = new Set(mapped.map((p) => p.project_id));
-          const local = loadRaw(LS_PROJECTS_KEY, []);
-
-          // ── Back-sync: push any localStorage-only projects to Supabase.
-          // This fixes projects created before the FK fix that only exist in the browser cache.
-          const localOnly = local.filter((p) => {
-            const id = p.project_id || p.projectId;
-            return id && !dbIds.has(id);
-          });
-          if (localOnly.length > 0) {
-            console.info('[DataService] Back-syncing', localOnly.length, 'localStorage-only project(s) to Supabase...');
-            const rows = localOnly.map(projectToDb);
-            const { error: syncErr } = await supabase.from('projects').upsert(rows, { onConflict: 'project_id' });
-            if (syncErr) {
-              console.warn('[DataService] Back-sync projects error:', syncErr.message);
-            } else {
-              // Also sync their tasks now that project rows exist in DB
-              const localTasks = loadRaw(LS_TASKS_KEY, []);
-              const localOnlyIds = new Set(localOnly.map((p) => p.project_id || p.projectId));
-              const orphanTasks = localTasks.filter((t) => localOnlyIds.has(t.projectId || t.project_id));
-              if (orphanTasks.length > 0) {
-                console.info('[DataService] Back-syncing', orphanTasks.length, 'orphaned task(s) to Supabase...');
-                const taskRows = orphanTasks.map(taskToDb);
-                const { error: taskSyncErr } = await supabase.from('survey_tasks').upsert(taskRows, { onConflict: 'id' });
-                if (taskSyncErr) console.warn('[DataService] Back-sync tasks error:', taskSyncErr.message);
-                else console.info('[DataService] Back-sync tasks: SUCCESS');
-              }
-            }
-          }
-
-          const mergedMap = new Map();
-          local.forEach((p) => mergedMap.set(p.project_id || p.projectId, p));
-          mapped.forEach((p) => mergedMap.set(p.project_id || p.projectId, p));
-          const merged = Array.from(mergedMap.values()).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-          saveRaw(LS_PROJECTS_KEY, merged);
-          return merged;
+        if (!error) {
+          // Supabase is reachable — it is the source of truth.
+          // Overwrite localStorage to match. If the DB was cleared, the UI clears too.
+          const mapped = (data || []).map(projectFromDb);
+          saveRaw(LS_PROJECTS_KEY, mapped);
+          return mapped;
         }
       } catch (e) {
         console.warn('[DataService] Supabase getProjects failed, using local cache:', e);
       }
     }
+    // Supabase unreachable — fall back to local cache for offline support
     return loadRaw(LS_PROJECTS_KEY, []);
   },
 
@@ -265,34 +234,34 @@ export const dataService = {
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase.from('survey_tasks').select('*').order('dispatched_at', { ascending: false });
-        if (!error && data) {
-          const mapped = data.map(taskFromDb);
+        if (!error) {
+          // Supabase is reachable — it is the source of truth.
+          // Merge DB data with local cache only to preserve rich local fields
+          // (e.g. large DataURL photos that aren’t stored in Supabase).
+          // But DB deletions must win: remove any local task whose id is no longer in DB.
+          const mapped = (data || []).map(taskFromDb);
+          const dbIds = new Set(mapped.map((t) => t.id));
           const local = loadRaw(LS_TASKS_KEY, []);
+          // Keep local-only entries ONLY if they have no DB counterpart AND their project still exists in DB
+          // (avoids ghost tasks from cleared projects)
+          const dbProjectIds = new Set(loadRaw(LS_PROJECTS_KEY, []).map((p) => p.project_id || p.projectId));
           const mergedMap = new Map();
-          local.forEach((t) => mergedMap.set(t.id, t));
-          mapped.forEach((t) => {
-            const existing = mergedMap.get(t.id) || {};
-            mergedMap.set(t.id, {
-              ...existing,
-              ...t,
-              surveyorOwnerName: t.surveyorOwnerName || existing.surveyorOwnerName || '',
-              surveyorPhone: t.surveyorPhone || existing.surveyorPhone || '',
-              surveyorAadhaar: t.surveyorAadhaar || existing.surveyorAadhaar || '',
-              surveyorOwnerContact: t.surveyorOwnerContact || existing.surveyorOwnerContact || '',
-              verifiedLandClass: (t.verifiedLandClass && t.verifiedLandClass !== 'Pending Survey') ? t.verifiedLandClass : (existing.verifiedLandClass || t.verifiedLandClass || 'Residential'),
-              soilReportUrl: t.soilReportUrl || existing.soilReportUrl || null,
-              soilReportName: t.soilReportName || existing.soilReportName || null,
-              sitePhotoUrl: t.sitePhotoUrl || existing.sitePhotoUrl || null,
-              sitePhotoName: t.sitePhotoName || existing.sitePhotoName || null,
-              assetValue: t.assetValue !== null && t.assetValue !== undefined ? t.assetValue : (existing.assetValue ?? null),
-              areaSqm: t.areaSqm !== null && t.areaSqm !== undefined ? t.areaSqm : (existing.areaSqm ?? null),
-              larr_financials: t.larr_financials || existing.larr_financials || null,
-              baseCircleRateOverride: t.baseCircleRateOverride ?? existing.baseCircleRateOverride,
-              zoneTypeOverride: t.zoneTypeOverride || existing.zoneTypeOverride,
-              officerStatus: t.officerStatus || existing.officerStatus,
-              officerRemarks: t.officerRemarks || existing.officerRemarks || '',
-              status: t.status || existing.status || 'Pending',
-            });
+          // Start with DB tasks
+          mapped.forEach((t) => mergedMap.set(t.id, t));
+          // Overlay richer local fields only for tasks that exist in DB
+          local.forEach((t) => {
+            if (dbIds.has(t.id)) {
+              const dbVersion = mergedMap.get(t.id);
+              mergedMap.set(t.id, {
+                ...dbVersion,
+                // Preserve local-only rich fields that DB may not have (e.g. large DataURLs)
+                soilReportUrl: dbVersion.soilReportUrl || t.soilReportUrl || null,
+                soilReportName: dbVersion.soilReportName || t.soilReportName || null,
+                sitePhotoUrl: dbVersion.sitePhotoUrl || t.sitePhotoUrl || null,
+                sitePhotoName: dbVersion.sitePhotoName || t.sitePhotoName || null,
+              });
+            }
+            // Tasks not in DB are dropped (DB cleared = tasks gone)
           });
           const merged = Array.from(mergedMap.values()).sort((a, b) => new Date(b.dispatchedAt || 0) - new Date(a.dispatchedAt || 0));
           saveRaw(LS_TASKS_KEY, merged);
@@ -302,6 +271,7 @@ export const dataService = {
         console.warn('[DataService] Supabase getTasks failed, using local cache:', e);
       }
     }
+    // Supabase unreachable — fall back to local cache
     return loadRaw(LS_TASKS_KEY, []);
   },
 
