@@ -161,10 +161,33 @@ export const dataService = {
     if (isSupabaseConfigured && projectsList.length > 0) {
       try {
         const rows = projectsList.map(projectToDb);
-        await supabase.from('projects').upsert(rows, { onConflict: 'project_id' });
+        const { error } = await supabase.from('projects').upsert(rows, { onConflict: 'project_id' });
+        if (error) console.warn('[DataService] Supabase saveProjects error:', error);
       } catch (e) {
         console.warn('[DataService] Supabase saveProjects error:', e);
       }
+    }
+  },
+
+  // ── CRITICAL GUARD: Sync parent project rows to Supabase before task inserts.
+  // Prevents FK constraint violation (survey_tasks.project_id → projects.project_id).
+  // Call this before any saveTasks() or individual task inserts.
+  async syncProjectsToDb(projectIds = []) {
+    if (!isSupabaseConfigured || projectIds.length === 0) return { success: true };
+    try {
+      const local = loadRaw(LS_PROJECTS_KEY, []);
+      const toSync = local.filter((p) => projectIds.includes(p.project_id || p.projectId));
+      if (toSync.length === 0) return { success: true };
+      const rows = toSync.map(projectToDb);
+      const { error } = await supabase.from('projects').upsert(rows, { onConflict: 'project_id' });
+      if (error) {
+        console.warn('[DataService] syncProjectsToDb error:', error);
+        return { success: false, error };
+      }
+      return { success: true };
+    } catch (e) {
+      console.warn('[DataService] syncProjectsToDb exception:', e);
+      return { success: false, error: e };
     }
   },
 
@@ -175,12 +198,17 @@ export const dataService = {
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('projects').upsert([projectToDb(project)]);
+        const { error } = await supabase.from('projects').upsert([projectToDb(project)], { onConflict: 'project_id' });
+        if (error) {
+          console.warn('[DataService] Supabase addProject error:', error);
+          return { success: false, error, projects: updated };
+        }
       } catch (e) {
-        console.warn('[DataService] Supabase addProject error:', e);
+        console.warn('[DataService] Supabase addProject exception:', e);
+        return { success: false, error: e, projects: updated };
       }
     }
-    return updated;
+    return { success: true, projects: updated };
   },
 
   async deleteProject(projectId) {
@@ -248,18 +276,39 @@ export const dataService = {
     return loadRaw(LS_TASKS_KEY, []);
   },
 
+  // saveTasks: Always syncs parent project rows to Supabase FIRST (prevents FK constraint violations),
+  // then upserts task rows. Designed for initial project dispatch by officer.
+  // For surveyor field-level updates, prefer updateTask() per task.
   async saveTasks(tasksList) {
     saveRaw(LS_TASKS_KEY, tasksList);
-    if (isSupabaseConfigured && tasksList.length > 0) {
-      try {
-        const rows = tasksList.map(taskToDb);
-        await supabase.from('survey_tasks').upsert(rows, { onConflict: 'id' });
-      } catch (e) {
-        console.warn('[DataService] Supabase saveTasks error:', e);
+    if (!isSupabaseConfigured || tasksList.length === 0) return { success: true };
+
+    try {
+      // Step 1: Ensure parent project rows exist in Supabase before inserting tasks.
+      // This prevents PostgreSQL FK violation: survey_tasks.project_id → projects.project_id
+      const uniqueProjectIds = [...new Set(tasksList.map((t) => t.projectId || t.project_id).filter(Boolean))];
+      const syncResult = await this.syncProjectsToDb(uniqueProjectIds);
+      if (!syncResult.success) {
+        // Log but don't abort — the project may already exist in the DB from a prior sync
+        console.warn('[DataService] saveTasks: parent project pre-sync had issues:', syncResult.error?.message);
       }
+
+      // Step 2: Upsert tasks (FK constraint now satisfied)
+      const rows = tasksList.map(taskToDb);
+      const { error } = await supabase.from('survey_tasks').upsert(rows, { onConflict: 'id' });
+      if (error) {
+        console.warn('[DataService] Supabase saveTasks upsert error:', error);
+        return { success: false, error };
+      }
+      return { success: true };
+    } catch (e) {
+      console.warn('[DataService] Supabase saveTasks exception:', e);
+      return { success: false, error: e };
     }
   },
 
+  // updateTask: Targeted Supabase UPDATE on a single row by id.
+  // Preferred for surveyor submissions — bypasses FK issues entirely since row already exists.
   async updateTask(taskId, updates) {
     const all = loadRaw(LS_TASKS_KEY, []);
     const updated = all.map((t) => (t.id === taskId ? { ...t, ...updates } : t));
@@ -295,13 +344,15 @@ export const dataService = {
           const { error } = await supabase.from('survey_tasks').update(dbUpdates).eq('id', taskId);
           if (error) {
             console.warn('[DataService] Supabase updateTask error:', error);
+            return { success: false, error };
           }
         }
       } catch (e) {
         console.warn('[DataService] Supabase updateTask exception:', e);
+        return { success: false, error: e };
       }
     }
-    return updated;
+    return { success: true, tasks: updated };
   },
 
   // DISBURSEMENTS

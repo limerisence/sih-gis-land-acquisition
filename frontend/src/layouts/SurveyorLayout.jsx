@@ -609,6 +609,9 @@ function ReviewInspection({ project, onBack }) {
   const handleResubmit = useCallback(async () => {
     setSubmitting(true);
     const allT = allTasks.length > 0 ? allTasks : loadTasks();
+    const now = new Date().toISOString();
+
+    // Build the updated list for local state
     const updated = allT.map((t) => {
       if (t.projectId !== project.project_id || (t.officerStatus !== 'Under Review' && !t.reviewRemarks)) return t;
       const fd = formData[t.id] || {};
@@ -623,24 +626,60 @@ function ReviewInspection({ project, onBack }) {
         landCategory: vClass,
         officerStatus: null,
         reviewRemarks: null,
-        resubmittedAt: new Date().toISOString(),
+        resubmittedAt: now,
         status: 'Completed',
       };
     });
-    setAllTasks(updated);
-    saveTasks(updated);
-    await dataService.saveTasks(updated);
 
+    // Save to localStorage first for instant local feedback
+    setAllTasks(updated);
+    saveRaw(LS_TASKS_KEY, updated);
+
+    // Push each changed task individually via updateTask() — targeted UPDATE, no FK risk
+    const projectTasks = updated.filter((t) => t.projectId === project.project_id);
+    let dbErrors = [];
+    for (const t of projectTasks) {
+      const fd = formData[t.id] || {};
+      const isR = fd.zoneType === 'RURAL' || Boolean(fd.isRural);
+      const vClass = fd.verifiedLandClass || t.verifiedLandClass || 'Residential';
+      const result = await dataService.updateTask(t.id, {
+        surveyorOwnerName: fd.surveyorOwnerName || t.surveyorOwnerName || '',
+        surveyorPhone:     fd.surveyorPhone     || t.surveyorPhone     || '',
+        surveyorAadhaar:   fd.surveyorAadhaar   || t.surveyorAadhaar   || '',
+        surveyorOwnerContact: fd.surveyorOwnerContact || t.surveyorOwnerContact || '',
+        khasraNo:          fd.khasraNo !== undefined ? fd.khasraNo.trim() : (t.khasraNo || ''),
+        verifiedLandClass: vClass,
+        zoneType:          isR ? 'RURAL' : 'URBAN',
+        isRural:           isR,
+        areaSqm:           fd.areaSqm   ?? t.areaSqm,
+        assetValue:        fd.assetValue ?? t.assetValue,
+        soilReportUrl:     fd.soilReportUrl  || t.soilReportUrl  || null,
+        soilReportName:    fd.soilReportName || t.soilReportName || null,
+        sitePhotoUrl:      fd.sitePhotoUrl   || t.sitePhotoUrl   || null,
+        sitePhotoName:     fd.sitePhotoName  || t.sitePhotoName  || null,
+        officerStatus:     null,
+        reviewRemarks:     null,
+        resubmittedAt:     now,
+        status:            'Completed',
+      });
+      if (!result.success) dbErrors.push(t.plotId);
+    }
+
+    // Update project status
     const allP = loadProjects();
     const targetProj = allP.find((p) => p.project_id === project.project_id);
     if (targetProj) {
       await dataService.addProject({ ...targetProj, status: 'RESUBMITTED' });
     }
 
-    showToast(`✅ Project ${project.project_id} re-submitted for officer review.`, 'success');
+    if (dbErrors.length > 0) {
+      showToast(`⚠️ Re-submitted locally. DB sync failed for plots: ${dbErrors.join(', ')}. Officer may not see latest data immediately.`, 'error');
+    } else {
+      showToast(`✅ Project ${project.project_id} re-submitted for officer review.`, 'success');
+    }
     setSubmitting(false);
     setResubmitted(true);
-  }, [formData, project, showToast]);
+  }, [formData, allTasks, project, showToast]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
@@ -820,6 +859,8 @@ function PlotInspection({ project, onBack }) {
   const handleFinalSubmit = useCallback(async () => {
     setSubmitting(true);
     const allT = allTasks.length > 0 ? allTasks : loadTasks();
+
+    // Build updated full task list for local state
     const updated = allT.map((t) => {
       if (t.projectId !== project.project_id) return t;
       const fd = formData[t.id] || {};
@@ -836,19 +877,52 @@ function PlotInspection({ project, onBack }) {
         status: 'Completed',
       };
     });
-    setAllTasks(updated);
-    saveTasks(updated);
-    await dataService.saveTasks(updated);
 
+    // Save to localStorage first (instant local feedback for surveyor)
+    setAllTasks(updated);
+    saveRaw(LS_TASKS_KEY, updated);
+
+    // Push each project task individually via updateTask() — no FK risk
+    const projectTasks = updated.filter((t) => t.projectId === project.project_id);
+    let dbErrors = [];
+    for (const t of projectTasks) {
+      const fd = formData[t.id] || {};
+      const isR = fd.zoneType === 'RURAL' || Boolean(fd.isRural);
+      const vClass = fd.verifiedLandClass || t.verifiedLandClass || 'Residential';
+      const result = await dataService.updateTask(t.id, {
+        surveyorOwnerName: fd.surveyorOwnerName || t.surveyorOwnerName || '',
+        surveyorPhone:     fd.surveyorPhone     || t.surveyorPhone     || '',
+        surveyorAadhaar:   fd.surveyorAadhaar   || t.surveyorAadhaar   || '',
+        surveyorOwnerContact: fd.surveyorOwnerContact || t.surveyorOwnerContact || '',
+        khasraNo:          fd.khasraNo !== undefined ? fd.khasraNo.trim() : (t.khasraNo || ''),
+        verifiedLandClass: vClass,
+        zoneType:          isR ? 'RURAL' : 'URBAN',
+        isRural:           isR,
+        areaSqm:           fd.areaSqm   ?? t.areaSqm,
+        assetValue:        fd.assetValue ?? t.assetValue,
+        soilReportUrl:     fd.soilReportUrl  || t.soilReportUrl  || null,
+        soilReportName:    fd.soilReportName || t.soilReportName || null,
+        sitePhotoUrl:      fd.sitePhotoUrl   || t.sitePhotoUrl   || null,
+        sitePhotoName:     fd.sitePhotoName  || t.sitePhotoName  || null,
+        status:            'Completed',
+      });
+      if (!result.success) dbErrors.push(t.plotId);
+    }
+
+    // Update project status to CLOSED
     const allP = loadProjects();
     const targetP = allP.find((p) => p.project_id === project.project_id);
     if (targetP) {
       await dataService.addProject({ ...targetP, status: 'CLOSED' });
     }
 
-    showToast(`✅ Project ${project.project_id} submitted & closed.`, 'success');
+    if (dbErrors.length > 0) {
+      showToast(`⚠️ Saved locally. DB sync failed for plots: ${dbErrors.join(', ')}. Municipal officer data may be delayed.`, 'error');
+    } else {
+      showToast(`✅ Project ${project.project_id} submitted to State Land Registry.`, 'success');
+    }
     setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 600);
-  }, [formData, project, showToast]);
+  }, [formData, allTasks, project, showToast]);
 
   const completedCount = projTasks.filter((t) => {
     const fd = formData[t.id] || {};

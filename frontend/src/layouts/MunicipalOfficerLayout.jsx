@@ -668,7 +668,12 @@ function GISBranch({ onBack, userProfile }) {
     };
 
     saveProjects([newProject, ...projects.filter((p) => (p.project_id || p.projectId) !== pid)]);
-    await dataService.addProject(newProject);
+    // Await confirmed DB write — tasks CANNOT be inserted without the project row existing (FK constraint)
+    const projResult = await dataService.addProject(newProject);
+    if (!projResult.success) {
+      showToast(`❌ Failed to save project to State Land Registry: ${projResult.error?.message || 'Database error'}. Please try again.`, 'error');
+      return;
+    }
 
     // 2. Construct tasks with preserved parcel geometries
     const newTasks = all
@@ -725,14 +730,18 @@ function GISBranch({ onBack, userProfile }) {
         };
       });
 
-    // 3. Save tasks SECOND now that the parent project row exists in Supabase
+    // 3. Save tasks — project row confirmed in Supabase, FK constraint satisfied
     const allTasks = [...existing, ...newTasks];
     saveTasks(allTasks);
-    await dataService.saveTasks(allTasks);
+    const tasksResult = await dataService.saveTasks(allTasks);
+    if (!tasksResult.success) {
+      showToast(`⚠️ Project ${pid} created but plot dispatch to DB had issues. Surveyor data may sync next time. (${tasksResult.error?.message || ''})`, 'error');
+    } else {
+      showToast(`✅ Project ${pid} created & ${newTasks.length} plots dispatched to State Land Registry.`, 'success');
+    }
 
     setDispatchedIds(new Set([...existing.map((t) => t.plotId), ...newTasks.map((t) => t.plotId)]));
     setLastProjectId(pid);
-    showToast(`✅ Project ${pid} created — ${newTasks.length} plots dispatched.`, 'success');
   }, [projectName, baseRates, affectedPlots, points, bufferWidthMeters, userProfile, showToast]);
 
   return (
