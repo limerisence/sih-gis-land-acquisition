@@ -285,22 +285,46 @@ function GrievanceForm({ onSubmit }) {
   );
 }
 
+const LS_TASKS_KEY = 'bhoomi_survey_tasks';
+const LS_DISBURSE_KEY = 'bhoomi_disbursements';
+const loadRaw = (key, fb = []) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fb));
+  } catch {
+    return fb;
+  }
+};
+const cleanDigits = (v) => (v || '').toString().replace(/\D/g, '');
+
 export default function BeneficiaryLayout() {
   const { allFeatures, showToast } = useGIS();
   const { userProfile } = useAuth();
   const [selectedPlot, setSelectedPlot] = useState(null);
   const [showGrievance, setShowGrievance] = useState(false);
-  const [allTasks, setAllTasks] = useState([]);
-  const [allDisbursements, setAllDisbursements] = useState({});
+  const [showAllFallback, setShowAllFallback] = useState(false);
+  
+  // Instant load from localStorage cache, followed by background revalidation
+  const [allTasks, setAllTasks] = useState(() => loadRaw(LS_TASKS_KEY, []));
+  const [allDisbursements, setAllDisbursements] = useState(() => loadRaw(LS_DISBURSE_KEY, {}));
+  const [isLoading, setIsLoading] = useState(() => {
+    const cached = loadRaw(LS_TASKS_KEY, []);
+    return cached.length === 0;
+  });
 
   // Sync tasks and disbursements
   const refreshData = useCallback(async () => {
-    const [tList, dMap] = await Promise.all([
-      dataService.getTasks(),
-      dataService.getDisbursements(),
-    ]);
-    if (tList) setAllTasks(tList);
-    if (dMap) setAllDisbursements(dMap);
+    try {
+      const [tList, dMap] = await Promise.all([
+        dataService.getTasks(),
+        dataService.getDisbursements(),
+      ]);
+      if (tList && tList.length > 0) setAllTasks(tList);
+      if (dMap) setAllDisbursements(dMap);
+    } catch (err) {
+      console.warn('[BeneficiaryLayout] Error fetching registry data:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -311,20 +335,41 @@ export default function BeneficiaryLayout() {
     return unsub;
   }, [refreshData]);
 
-  // Find plots linked to logged-in beneficiary phone/aadhaar or fallback to all
+  // Find plots linked to logged-in beneficiary phone/aadhaar with digits-only normalization
   const linkedTasks = useMemo(() => {
+    if (!allTasks || allTasks.length === 0) return [];
+    if (showAllFallback) return allTasks;
     if (!userProfile?.phone && !userProfile?.aadhaar) return allTasks;
-    const p = (userProfile.phone || '').trim();
-    const a = (userProfile.aadhaar || '').trim();
+
+    const pDigits = cleanDigits(userProfile.phone);
+    const aDigits = cleanDigits(userProfile.aadhaar);
 
     const matched = allTasks.filter((t) => {
-      const sp = (t.surveyorPhone || t.surveyorOwnerContact || '').trim();
-      const sa = (t.surveyorAadhaar || '').trim();
-      return (p && sp && sp.includes(p)) || (a && sa && sa.includes(a));
+      const spDigits = cleanDigits(t.surveyorPhone || t.surveyorOwnerContact || '');
+      const saDigits = cleanDigits(t.surveyorAadhaar || '');
+
+      // Phone match: match last 10 digits to handle country code (+91 / 0 / dashes / spaces)
+      const phoneMatch = Boolean(
+        pDigits && spDigits &&
+        (pDigits.length >= 10 && spDigits.length >= 10
+          ? pDigits.slice(-10) === spDigits.slice(-10)
+          : spDigits.includes(pDigits) || pDigits.includes(spDigits))
+      );
+
+      // Aadhaar match: compare digits directly, ignoring all spaces and hyphens
+      const aadhaarMatch = Boolean(
+        aDigits && saDigits &&
+        (saDigits === aDigits ||
+          (aDigits.length >= 4 && saDigits.endsWith(aDigits.slice(-4))) ||
+          saDigits.includes(aDigits) ||
+          aDigits.includes(saDigits))
+      );
+
+      return phoneMatch || aadhaarMatch;
     });
 
-    return matched.length > 0 ? matched : allTasks;
-  }, [allTasks, userProfile]);
+    return matched.length > 0 ? matched : [];
+  }, [allTasks, userProfile, showAllFallback]);
 
   // Handle tile click to toggle/select plot details accordion
   const handleTileClick = (t) => {
@@ -350,6 +395,13 @@ export default function BeneficiaryLayout() {
       });
     }
   };
+
+  // Auto-select plot if only 1 linked plot is available and none currently selected
+  useEffect(() => {
+    if (!selectedPlot && linkedTasks.length === 1) {
+      handleTileClick(linkedTasks[0]);
+    }
+  }, [linkedTasks, selectedPlot]);
 
   // Derive the full survey task record for the selected plot
   const activeTaskDetails = useMemo(() => {
@@ -444,13 +496,32 @@ export default function BeneficiaryLayout() {
           </div>
         </div>
 
-        {/* Linked Plots selector tiles */}
-        {linkedTasks.length > 0 ? (
+        {/* Linked Plots selector tiles / Loading State / Empty State */}
+        {isLoading && linkedTasks.length === 0 ? (
+          <div className="mb-6 p-8 rounded-2xl border border-slate-200 bg-white text-center shadow-xs animate-in fade-in duration-150">
+            <div className="w-9 h-9 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mx-auto mb-3" />
+            <p className="text-sm font-bold text-slate-900">Connecting to State Land Registry...</p>
+            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              Retrieving verified ground survey records, RFCTLARR statutory awards, and PFMS live payout timeline.
+            </p>
+          </div>
+        ) : linkedTasks.length > 0 ? (
           <div className="mb-6 p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between mb-3.5 flex-wrap gap-2">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                <span>Your Surveyed Land Parcels ({linkedTasks.length})</span>
+                <span>
+                  {showAllFallback ? 'All Surveyed Land Parcels' : 'Your Surveyed Land Parcels'} ({linkedTasks.length})
+                </span>
+                {showAllFallback && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllFallback(false)}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 ml-2 underline cursor-pointer"
+                  >
+                    Reset Filter
+                  </button>
+                )}
               </div>
               <span className="text-xs text-slate-500 font-medium">
                 Click a parcel tile below to view detailed acquisition report & live payout tracker
@@ -495,11 +566,27 @@ export default function BeneficiaryLayout() {
             </div>
           </div>
         ) : (
-          <div className="mb-6 p-6 rounded-2xl border border-slate-200 bg-white text-center shadow-xs">
-            <p className="text-sm font-bold text-slate-800">No Surveyed Parcels Found</p>
-            <p className="text-xs text-slate-500 mt-1">
-              No ground survey records were found matching your account credentials.
+          <div className="mb-6 p-7 rounded-2xl border border-slate-200 bg-white text-center shadow-xs">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <p className="text-sm font-bold text-slate-900">No Surveyed Parcels Found for Credentials</p>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              No on-site ground survey record was found matching Mobile{' '}
+              <strong className="text-slate-800 font-mono">{userProfile?.phone || 'N/A'}</strong> or Aadhaar{' '}
+              <strong className="text-slate-800 font-mono">{userProfile?.aadhaar || 'N/A'}</strong>.
             </p>
+            {allTasks.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAllFallback(true)}
+                  className="text-xs font-semibold px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer"
+                >
+                  Browse All Surveyed Parcels ({allTasks.length}) →
+                </button>
+              </div>
+            )}
           </div>
         )}
 

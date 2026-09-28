@@ -104,8 +104,24 @@ export default function PortalGateModal() {
       return;
     }
 
+    let ownerName = 'Verified Landowner';
+    try {
+      const tasks = JSON.parse(localStorage.getItem('bhoomi_survey_tasks') || '[]');
+      const pD = cleanPhone.replace(/\D/g, '');
+      const aD = cleanAadhaar.replace(/\D/g, '');
+      const found = tasks.find((t) => {
+        const spD = (t.surveyorPhone || t.surveyorOwnerContact || '').replace(/\D/g, '');
+        const saD = (t.surveyorAadhaar || '').replace(/\D/g, '');
+        return (pD && spD && (pD.slice(-10) === spD.slice(-10) || spD.includes(pD))) ||
+               (aD && saD && (saD === aD || saD.includes(aD) || aD.includes(saD)));
+      });
+      if (found?.surveyorOwnerName) {
+        ownerName = found.surveyorOwnerName;
+      }
+    } catch {}
+
     login(ROLES.BENEFICIARY, `ben-${cleanPhone}-${cleanAadhaar}`, {
-      name: 'Verified Landowner',
+      name: ownerName,
       phone: cleanPhone,
       aadhaar: cleanAadhaar,
       designation: 'Land Owner (Beneficiary)',
@@ -371,6 +387,63 @@ export default function PortalGateModal() {
                   Verify Credentials & Check Compensation Status →
                 </button>
               </form>
+
+              {/* Quick-test verified profiles */}
+              <div className="mt-5 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Verified Landowner Profiles
+                  </span>
+                  <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60">
+                    Quick Fill
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhone('9831098765');
+                      setAadhaar('7123 4567 8901');
+                      setLoginErr('');
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-slate-50/70 hover:bg-blue-50/30 transition-all flex items-center justify-between group cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-semibold text-xs text-slate-800 group-hover:text-blue-700">
+                        Subhash Chandra Mukhopadhyay
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                        📱 9831098765 · 🆔 7123 4567 8901
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                      Fill →
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhone('9830123456');
+                      setAadhaar('5482 9103 4721');
+                      setLoginErr('');
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-slate-50/70 hover:bg-blue-50/30 transition-all flex items-center justify-between group cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-semibold text-xs text-slate-800 group-hover:text-blue-700">
+                        Ramesh Chandra Bannerjee
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                        📱 9830123456 · 🆔 5482 9103 4721
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                      Fill →
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
