@@ -141,7 +141,36 @@ export const dataService = {
         const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
         if (!error && data) {
           const mapped = data.map(projectFromDb);
+          const dbIds = new Set(mapped.map((p) => p.project_id));
           const local = loadRaw(LS_PROJECTS_KEY, []);
+
+          // ── Back-sync: push any localStorage-only projects to Supabase.
+          // This fixes projects created before the FK fix that only exist in the browser cache.
+          const localOnly = local.filter((p) => {
+            const id = p.project_id || p.projectId;
+            return id && !dbIds.has(id);
+          });
+          if (localOnly.length > 0) {
+            console.info('[DataService] Back-syncing', localOnly.length, 'localStorage-only project(s) to Supabase...');
+            const rows = localOnly.map(projectToDb);
+            const { error: syncErr } = await supabase.from('projects').upsert(rows, { onConflict: 'project_id' });
+            if (syncErr) {
+              console.warn('[DataService] Back-sync projects error:', syncErr.message);
+            } else {
+              // Also sync their tasks now that project rows exist in DB
+              const localTasks = loadRaw(LS_TASKS_KEY, []);
+              const localOnlyIds = new Set(localOnly.map((p) => p.project_id || p.projectId));
+              const orphanTasks = localTasks.filter((t) => localOnlyIds.has(t.projectId || t.project_id));
+              if (orphanTasks.length > 0) {
+                console.info('[DataService] Back-syncing', orphanTasks.length, 'orphaned task(s) to Supabase...');
+                const taskRows = orphanTasks.map(taskToDb);
+                const { error: taskSyncErr } = await supabase.from('survey_tasks').upsert(taskRows, { onConflict: 'id' });
+                if (taskSyncErr) console.warn('[DataService] Back-sync tasks error:', taskSyncErr.message);
+                else console.info('[DataService] Back-sync tasks: SUCCESS');
+              }
+            }
+          }
+
           const mergedMap = new Map();
           local.forEach((p) => mergedMap.set(p.project_id || p.projectId, p));
           mapped.forEach((p) => mergedMap.set(p.project_id || p.projectId, p));
