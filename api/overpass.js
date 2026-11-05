@@ -13,8 +13,10 @@ const MIRRORS = [
   'https://overpass.osm.jp/api/interpreter'
 ];
 
-const TOTAL_BUDGET_MS = 9000;      // hard deadline; keeps us under Vercel's 10 s limit
-const STAGGER_MS = 1500;           // start next mirror if previous has not answered yet
+const TOTAL_BUDGET_MS = Number(process.env.OVERPASS_BUDGET_MS) || 25000; // whole request, incl. retry
+const STAGGER_MS = 3000;           // start next mirror if previous has not answered yet
+const RETRY_DELAY_MS = 2000;       // pause before the second round when every mirror failed fast
+const MIN_ROUND_MS = 4000;         // do not start a round with less time than this left
 const QUERY_TIMEOUT_S = 15;        // Overpass server-side timeout
 const QUERY_MAXSIZE = 67108864;    // 64 MiB: smaller requests are accepted more easily when busy
 const MAX_BBOX_DEGREES = 1;
@@ -23,6 +25,10 @@ const CACHE_MAX = 50;
 
 const USER_AGENT =
   'BhoomiSetuGIS/2.0 (Municipal Land Acquisition Platform; mailto:admin@bhoomi-setu.gov.in)';
+
+// Lets Vercel run this function long enough for slow public Overpass servers.
+// (If your plan rejects it, remove this line and set maxDuration in vercel.json.)
+export const config = { maxDuration: 30 };
 
 // Warm-instance cache (survives between requests while the function stays warm).
 const cache = new Map();
@@ -70,7 +76,7 @@ async function queryMirror(mirror, controller, query) {
 
 // Starts mirror #1 immediately. Starts the next one when the previous
 // fails, or after STAGGER_MS without an answer. First success wins.
-function raceMirrors(query) {
+function raceMirrors(query, budgetMs) {
   return new Promise((resolve, reject) => {
     const controllers = MIRRORS.map(() => new AbortController());
     const errors = [];
@@ -84,7 +90,7 @@ function raceMirrors(query) {
       if (done) return;
       pending.forEach(m => errors.push({ mirror: hostOf(m), error: 'No response before deadline' }));
       finish(() => reject(Object.assign(new Error('deadline'), { errors })));
-    }, TOTAL_BUDGET_MS);
+    }, budgetMs);
 
     function finish(fn) {
       done = true;
@@ -179,30 +185,44 @@ export default async function handler(req, res) {
 );
 out geom qt 500;`;
 
-  try {
-    const { data, mirror } = await raceMirrors(query);
+  const startedAt = Date.now();
+  const allDetails = [];
 
-    cache.set(key, { time: Date.now(), data });
-    if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+  for (let round = 1; round <= 2; round++) {
+    const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt);
+    if (remaining < MIN_ROUND_MS) break;
 
-    console.log(`[Overpass Proxy] Success from ${hostOf(mirror)} with ${data.elements.length} elements.`);
-    res.setHeader('X-Overpass-Mirror', hostOf(mirror));
-    res.setHeader('X-Cache', 'MISS');
-    return res.status(200).json(data);
-  } catch (err) {
-    const details = err.errors || [{ mirror: 'n/a', error: err.message }];
-    console.warn('[Overpass Proxy] All mirrors failed:', JSON.stringify(details));
+    try {
+      const { data, mirror } = await raceMirrors(query, remaining);
 
-    // Serve an expired copy rather than fail, if we have one.
-    if (hit) {
-      res.setHeader('X-Cache', 'STALE');
-      return res.status(200).json(hit.data);
+      cache.set(key, { time: Date.now(), data });
+      if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+
+      console.log(`[Overpass Proxy] Success from ${hostOf(mirror)} (round ${round}) with ${data.elements.length} elements.`);
+      res.setHeader('X-Overpass-Mirror', hostOf(mirror));
+      res.setHeader('X-Cache', 'MISS');
+      return res.status(200).json(data);
+    } catch (err) {
+      (err.errors || [{ mirror: 'n/a', error: err.message }])
+        .forEach(e => allDetails.push({ round, ...e }));
+      const left = TOTAL_BUDGET_MS - (Date.now() - startedAt) - RETRY_DELAY_MS;
+      if (round === 1 && left >= MIN_ROUND_MS) await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      else break;
     }
-
-    return res.status(503).json({
-      error: 'All Overpass mirrors timed out or unavailable. Using cadastral grid fallback.',
-      overpassUnavailable: true,
-      details
-    });
   }
+
+  console.warn('[Overpass Proxy] All mirrors failed:', JSON.stringify(allDetails));
+
+  // Serve an expired copy rather than fail, if we have one.
+  if (hit) {
+    res.setHeader('X-Cache', 'STALE');
+    return res.status(200).json(hit.data);
+  }
+
+  return res.status(503).json({
+    error: 'All Overpass mirrors timed out or unavailable. Using cadastral grid fallback.',
+    overpassUnavailable: true,
+    elapsedMs: Date.now() - startedAt,
+    details: allDetails
+  });
 }
