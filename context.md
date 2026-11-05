@@ -9,7 +9,7 @@
 | Field | Value |
 |---|---|
 | **Name** | BhoomiAcquire GIS |
-| **Competition** | Smart India Hackathon (SIH) 2024 |
+| **Competition** | Smart India Hackathon (SIH) 2026 |
 | **Domain** | West Bengal Municipal Land Acquisition & Infrastructure Corridor Analysis |
 | **Primary Users** | Municipal Officers (input), Surveyors (field dossier), District Collectors (review) |
 | **Stack** | React 19 + Vite 8 (frontend) · Node.js + Express (backend) · Leaflet + React-Leaflet (map) · Turf.js (spatial) · Overpass API (live OSM data) |
