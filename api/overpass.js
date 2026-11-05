@@ -1,24 +1,32 @@
 // Vercel Serverless Function: /api/overpass
-// Proxies OSM cadastre/land-use vector polygons using a server-side User-Agent
-// to avoid browser 406/CORS blocks. Races several Overpass mirrors in parallel.
+// Proxies OSM cadastre/land-use polygons with a server-side User-Agent.
+// Staggered (hedged) mirror requests + cache, so the shared public
+// Overpass servers are not flooded and rate-limited (HTTP 429).
 
+// Only DISTINCT backends. z./lz4.overpass-api.de are the same servers
+// that overpass-api.de already routes to, so they are not listed again.
 const MIRRORS = [
   'https://overpass-api.de/api/interpreter',
-  'https://z.overpass-api.de/api/interpreter',
-  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter'
+  'https://overpass.osm.jp/api/interpreter'
 ];
 
-const MIRROR_TIMEOUT_MS = 8000;       // per-mirror abort timer
-const OVERPASS_QUERY_TIMEOUT_S = 20;  // server-side Overpass timeout
-const MAX_BBOX_DEGREES = 1;           // reject huge areas to protect mirrors
+const TOTAL_BUDGET_MS = 9000;      // hard deadline; keeps us under Vercel's 10 s limit
+const STAGGER_MS = 1500;           // start next mirror if previous has not answered yet
+const QUERY_TIMEOUT_S = 15;        // Overpass server-side timeout
+const QUERY_MAXSIZE = 67108864;    // 64 MiB: smaller requests are accepted more easily when busy
+const MAX_BBOX_DEGREES = 1;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_MAX = 50;
 
 const USER_AGENT =
   'BhoomiSetuGIS/2.0 (Municipal Land Acquisition Platform; mailto:admin@bhoomi-setu.gov.in)';
 
-// Safely parse a coordinate. Accepts 0, rejects empty/blank/NaN/arrays.
+// Warm-instance cache (survives between requests while the function stays warm).
+const cache = new Map();
+
 function toCoord(value) {
   if (value === undefined || value === null) return null;
   if (typeof value !== 'number' && typeof value !== 'string') return null;
@@ -27,16 +35,104 @@ function toCoord(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+const hostOf = (url) => { try { return new URL(url).host; } catch (_) { return url; } };
+
+async function queryMirror(mirror, controller, query) {
+  const response = await fetch(mirror, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': USER_AGENT,
+      'Accept': 'application/json'
+    },
+    body: 'data=' + encodeURIComponent(query),
+    signal: controller.signal
+  });
+
+  if (response.status === 429) throw new Error('HTTP 429 (rate limited)');
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (_) {
+    throw new Error('Non-JSON response (server busy?)');
+  }
+
+  if (data && typeof data.remark === 'string' && /runtime error|timed out|out of memory/i.test(data.remark)) {
+    throw new Error('Overpass: ' + data.remark.slice(0, 120));
+  }
+  if (!data || !Array.isArray(data.elements) || data.elements.length === 0) {
+    throw new Error('Empty elements');
+  }
+  return data;
+}
+
+// Starts mirror #1 immediately. Starts the next one when the previous
+// fails, or after STAGGER_MS without an answer. First success wins.
+function raceMirrors(query) {
+  return new Promise((resolve, reject) => {
+    const controllers = MIRRORS.map(() => new AbortController());
+    const errors = [];
+    const pending = new Set();
+    let next = 0;
+    let active = 0;
+    let done = false;
+    let staggerTimer = null;
+
+    const deadline = setTimeout(() => {
+      if (done) return;
+      pending.forEach(m => errors.push({ mirror: hostOf(m), error: 'No response before deadline' }));
+      finish(() => reject(Object.assign(new Error('deadline'), { errors })));
+    }, TOTAL_BUDGET_MS);
+
+    function finish(fn) {
+      done = true;
+      clearTimeout(staggerTimer);
+      clearTimeout(deadline);
+      controllers.forEach(c => c.abort()); // cancel everything still in flight
+      fn();
+    }
+
+    function launch() {
+      if (done || next >= MIRRORS.length) return;
+      clearTimeout(staggerTimer);
+      const i = next++;
+      const mirror = MIRRORS[i];
+      active++;
+      pending.add(mirror);
+
+      queryMirror(mirror, controllers[i], query)
+        .then(data => {
+          if (done) return;
+          finish(() => resolve({ data, mirror }));
+        })
+        .catch(err => {
+          if (done) return;
+          active--;
+          pending.delete(mirror);
+          errors.push({ mirror: hostOf(mirror), error: err.message });
+          if (next < MIRRORS.length) launch();
+          else if (active === 0) finish(() => reject(Object.assign(new Error('all failed'), { errors })));
+        });
+
+      if (next < MIRRORS.length) staggerTimer = setTimeout(launch, STAGGER_MS);
+    }
+
+    launch();
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Expose-Headers', 'X-Overpass-Mirror, X-Cache');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // ---- Read params from query string or body ----
   const queryParams = req.query || {};
   let bodyParams = {};
   if (typeof req.body === 'object' && req.body !== null) {
@@ -64,8 +160,15 @@ export default async function handler(req, res) {
     });
   }
 
+  const key = [south, west, north, east].map(v => v.toFixed(4)).join(',');
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.time < CACHE_TTL_MS) {
+    res.setHeader('X-Cache', 'HIT');
+    return res.status(200).json(hit.data);
+  }
+
   const bbox = `${south},${west},${north},${east}`;
-  const query = `[out:json][timeout:${OVERPASS_QUERY_TIMEOUT_S}];
+  const query = `[out:json][timeout:${QUERY_TIMEOUT_S}][maxsize:${QUERY_MAXSIZE}];
 (
   way["landuse"](${bbox});
   way["leisure"](${bbox});
@@ -74,55 +177,32 @@ export default async function handler(req, res) {
   way["amenity"](${bbox});
   relation["landuse"](${bbox});
 );
-out geom 500;`;
-
-  // One controller per mirror so the losers can be cancelled once someone wins.
-  const controllers = MIRRORS.map(() => new AbortController());
-  let finished = false; // true once a winner exists (silences abort noise in logs)
-
-  const fetchFromMirror = async (mirror, controller) => {
-    const timeoutId = setTimeout(() => controller.abort(), MIRROR_TIMEOUT_MS);
-    try {
-      const response = await fetch(mirror, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': USER_AGENT
-        },
-        body: 'data=' + encodeURIComponent(query),
-        signal: controller.signal
-      });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = await response.json();
-      if (data && Array.isArray(data.elements) && data.elements.length > 0) {
-        return { data, mirror };
-      }
-      throw new Error('Empty elements');
-    } catch (err) {
-      if (!finished) console.warn(`[Overpass Proxy] ${mirror} failed: ${err.message}`);
-      throw err;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
+out geom qt 500;`;
 
   try {
-    const { data, mirror } = await Promise.any(
-      MIRRORS.map((m, i) => fetchFromMirror(m, controllers[i]))
-    );
+    const { data, mirror } = await raceMirrors(query);
 
-    finished = true;
-    controllers.forEach(c => c.abort()); // cancel remaining in-flight requests
+    cache.set(key, { time: Date.now(), data });
+    if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
 
-    console.log(`[Overpass Proxy] Success from ${mirror} with ${data.elements.length} elements.`);
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    console.log(`[Overpass Proxy] Success from ${hostOf(mirror)} with ${data.elements.length} elements.`);
+    res.setHeader('X-Overpass-Mirror', hostOf(mirror));
+    res.setHeader('X-Cache', 'MISS');
     return res.status(200).json(data);
-  } catch (_allFailed) {
+  } catch (err) {
+    const details = err.errors || [{ mirror: 'n/a', error: err.message }];
+    console.warn('[Overpass Proxy] All mirrors failed:', JSON.stringify(details));
+
+    // Serve an expired copy rather than fail, if we have one.
+    if (hit) {
+      res.setHeader('X-Cache', 'STALE');
+      return res.status(200).json(hit.data);
+    }
+
     return res.status(503).json({
       error: 'All Overpass mirrors timed out or unavailable. Using cadastral grid fallback.',
-      overpassUnavailable: true
+      overpassUnavailable: true,
+      details
     });
   }
 }
