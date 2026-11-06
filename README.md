@@ -294,7 +294,6 @@ GISContext updates (affectedPlots, affectedBuildings, bridgeBuffer, summary)
 ## 👨‍💻 Team
 
 <!-- Add your team members here -->
-
 | DEVSURYA GHOSH| DEVELOPMENT THE PROJECT |
 | AYAN SAMANTA | TESTING AND DEBUGGING  |
 ---
