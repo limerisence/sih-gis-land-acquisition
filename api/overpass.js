@@ -1,15 +1,10 @@
-// Vercel Serverless Function: /api/overpass
-// Proxies OSM cadastre and building vector polygons using server-side User-Agent to avoid browser 406/CORS blocks.
-
+// api/overpass.js
 export default async function handler(req, res) {
-  // Set CORS headers so it can be accessed from any environment
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   const queryParams = req.query || {};
   let bodyParams = {};
@@ -25,62 +20,62 @@ export default async function handler(req, res) {
   const east  = queryParams.east  || bodyParams.east;
 
   if (!south || !west || !north || !east) {
-    return res.status(400).json({ error: 'Missing required bounding box: south, west, north, east.' });
+    return res.status(400).json({ error: 'Missing required bounding box coordinates.' });
   }
 
-  const query = `[out:json][timeout:20];
+  // Optimize query: use [timeout:8] and limit elements to keep payload light
+  const query = `[out:json][timeout:8];
 (
   way["landuse"](${south},${west},${north},${east});
   way["leisure"](${south},${west},${north},${east});
   way["boundary"="cadastral"](${south},${west},${north},${east});
-  way["place"](${south},${west},${north},${east});
-  way["amenity"](${south},${west},${north},${east});
-  relation["landuse"](${south},${west},${north},${east});
+  way["building"](${south},${west},${north},${east});
 );
-out geom 500;`;
+out geom 400;`;
 
+  // Top 3 fastest global mirrors
   const mirrors = [
     'https://overpass-api.de/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-    'https://z.overpass-api.de/api/interpreter',
-    'https://lz4.overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.private.coffee/api/interpreter'
+    'https://overpass.kumi.systems/api/interpreter'
   ];
 
-  for (const mirror of mirrors) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 7000);
+  const fetchMirror = async (url) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6500); // 6.5s timeout (well under Vercel's 10s limit)
 
-      const response = await fetch(mirror, {
+    try {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'BhoomiSetuGIS/2.0 (Municipal Land Acquisition Platform; mailto:admin@bhoomi-setu.gov.in)'
+          'User-Agent': 'BhoomiSetuGIS/2.0 (Municipal Land Acquisition Platform; admin@bhoomi-setu.gov.in)'
         },
         body: 'data=' + encodeURIComponent(query),
         signal: controller.signal
       });
-      clearTimeout(timeoutId);
+      clearTimeout(timer);
 
-      if (!response.ok) {
-        console.warn(`[Overpass Proxy] ${mirror} returned HTTP ${response.status}`);
-        continue;
-      }
-
+      if (!response.ok) throw new Error(`Status ${response.status}`);
       const data = await response.json();
       if (data && Array.isArray(data.elements) && data.elements.length > 0) {
-        console.log(`[Overpass Proxy] Success from ${mirror} with ${data.elements.length} elements.`);
-        return res.status(200).json(data);
+        return data;
       }
+      throw new Error('Empty elements');
     } catch (err) {
-      console.warn(`[Overpass Proxy] Failed mirror ${mirror}:`, err.message);
+      clearTimeout(timer);
+      throw err;
     }
-  }
+  };
 
-  return res.status(503).json({
-    error: 'All Overpass mirrors timed out or unavailable. Please retry shortly.',
-    overpassUnavailable: true
-  });
+  try {
+    // Race mirrors in parallel — first to respond wins!
+    const data = await Promise.any(mirrors.map((m) => fetchMirror(m)));
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(503).json({
+      error: 'All Overpass mirrors timed out. Falling back to internal cadastral grid.',
+      overpassUnavailable: true
+    });
+  }
 }
