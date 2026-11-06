@@ -1,4 +1,4 @@
-# 🗺️ BhoomiAcquire GIS
+# 🗺️ BhoomiSetu
 
 **A GIS-powered land acquisition and infrastructure corridor impact analysis tool for West Bengal municipalities.**
 
@@ -294,10 +294,9 @@ GISContext updates (affectedPlots, affectedBuildings, bridgeBuffer, summary)
 ## 👨‍💻 Team
 
 <!-- Add your team members here -->
-| Name | Role |
-|---|---|
-| _Your Name_ | _Role_ |
 
+| DEVSURYA GHOSH| DEVELOPMENT THE PROJECT |
+| AYAN SAMANTA | TESTING AND DEBUGGING  |
 ---
 
 ## 📄 License
